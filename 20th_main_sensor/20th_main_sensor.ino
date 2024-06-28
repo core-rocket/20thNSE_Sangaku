@@ -1,112 +1,133 @@
 #include <Wire.h>
 #include <SPI.h>
-#include <Adafruit_BME280.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
-//key
-const int voltagePin = A0;           // アナログ入力ピンを指定
-const float thresholdVoltage = 2.5;  // しきい値電圧 (例: 2.5V)
-//LED
-#define PWM_LED_RED 20   //GPIO20を使用する
-#define PWM_LED_BLUE 21  //GPIO21を使用する
-// digitalWrite(PIN_LED, HIGH);
-// digitalWrite(PIN_LED, LOW);
+#include <Adafruit_BME280.h>
+
+#define Wire_SDA 6
+#define Wire_SCL 7
+#define PWM_LED_RED 20
+#define PWM_LED_BLUE 21
+
+#define bme_I2Cadr 0x77
 
 //CAN
-#include <CCP_MCP2515.h>
-#define CAN0_INT 2
-#define CAN0_CS 3
-CCP_MCP2515 CCP(CAN0_CS, CAN0_INT);
-#define get_data_xiao1 /*アドレス*/ ;
-#define get_data_xiao2 /*アドレス*/ ;
-#define fasejudge_xiao /*アドレス*/ ;
+float CAN_id_accel_x = 0;
+float CAN_id_accel_y = 0;
+float CAN_id_accel_z = 0;
+float CAN_id_orient_x = 0;
+float CAN_id_orient_y = 0;
+float CAN_id_orient_z = 0;
+float CAN_id_velocity_x = 0;
+float CAN_id_velocity_y = 0;
+float CAN_id_velocity_z = 0;
+float CAN_id_linearaccel_x = 0;
+float CAN_id_linearaccel_y = 0;
+float CAN_id_linearaccel_z = 0;
+float CAN_id_magnet_x = 0;
+float CAN_id_magnet_y = 0;
+float CAN_id_magnet_z = 0;
+float CAN_id_gravity_x = 0;
+float CAN_id_gravity_y = 0;
+float CAN_id_gravity_z = 0;
+float CAN_id_pressure = 0;
+float CAN_id_temperature = 0;
 
-Adafruit_BME280 bme;  // use I2C interface
-Adafruit_Sensor *bme_temp = bme.getTemperatureSensor();
-Adafruit_Sensor *bme_pressure = bme.getPressureSensor();
-Adafruit_Sensor *bme_humidity = bme.getHumiditySensor();
+/* Set the delay between fresh samples */
+uint16_t BNO055_SAMPLERATE_DELAY_MS = 100;
 
-//BME280
-float get_bme_pressure[10];
-float get_bme_temperature[10];
-float get_bme_humidity[10];
-float pressure_median;
-float temperature_median;
-float humidity_median;
-
-//BNO055
+// Check I2C device address and correct line below (by default address is 0x29 or 0x28)
+// id, address
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28, &Wire);
-float accel_data[5][3];  //x,y,z軸方向のデータを10回格納するために[10][3]
+
+float accel_data[5][3];
 float orientation_data[5][3];
 float velocity_data[5][3];
 float linearaccel_data[5][3];
 float magnetometer_data[5][3];
 float gravity_data[5][3];
 
-float bno_accel_median[3];  //x,y,z軸方向の中央値データを格納
+float bno_accel_median[3];
 float bno_orient_median[3];
 float bno_velocity_median[3];
 float bno_linearaccel_median[3];
 float bno_magnet_median[3];
 float bno_gravity_median[3];
 
-//
+//BME280
+Adafruit_BME280 bme;
+Adafruit_Sensor *bme_temp = bme.getTemperatureSensor();
+Adafruit_Sensor *bme_pressure = bme.getPressureSensor();
+// Adafruit_Sensor *bme_humidity = bme.getHumiditySensor();
+#define SEALEVELPRESSURE_HPA (1013.25)
+// #define BME_SCK 13
+// #define BME_MISO 12
+// #define BME_MOSI 11
+// #define BME_CS 10
+
+
+float get_bme_pressure[10];
+float get_bme_temperature[10];
+float get_bme_altitude[10];
+// float get_bme_humidity[10];
+float pressure_median;
+float temperature_median;
+float altitude_median;
+// float humidity_median;
+
+//global
 unsigned long time_100Hz = 0;
 int count_10Hz = 0;
+int count_median_exection = 0;
+int dataIndex = 0;
 
-// setup()ではdelay()使用可
-void setup() {
+void setup(void) {
   Serial.begin(115200);
-  //LED
+  Wire.setPins(Wire_SDA, Wire_SCL);
+  Wire.begin();
+
+  // Wire1.begin(Wire1_SDA, Wire1_SCL);
   pinMode(PWM_LED_RED, OUTPUT);
   pinMode(PWM_LED_BLUE, OUTPUT);
-  //CAN
-  CCP.begin();
 
-  //BME280
-  Serial.println(F("BME280 Sensor event test"));
+  while (!Serial) delay(10);  // wait for serial port to open!
 
-  if (!bme.begin()) {
+  Serial.println("Orientation Sensor Test");
+  Serial.println("");
+
+  /* Initialise the sensor */
+  if (!bno.begin()) {
+    /* There was a problem detecting the BNO055 ... check your connections */
+    Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
     while (1)
-      Serial.print(F("error"));
-    Serial.println(000);
-    delay(10);
+      ;
+  }
+
+  // BME280の初期化
+  Serial.println(F("BME280 Sensor event test"));
+  if (!bme.begin(bme_I2Cadr)) {
+    Serial.println(F("Could not find a valid BME280 sensor, check wiring!"));
+    while (1) delay(10);
   }
 
   bme_temp->printSensorDetails();
   bme_pressure->printSensorDetails();
-  bme_humidity->printSensorDetails();
-  //BNO055
-  Serial.println(F("Hello by BNO055"));
-
-  /* Initialise the sensor */
-  if (!bno.begin())  //BNOから応答がない場合
-  {
-    while (1)
-      Serial.print(F("error"));
-    Serial.println(001);
-    delay(10);  //無限ループでエラーが起きたコードの実行を阻止
-  }
+  // bme_humidity->printSensorDetails();
+  Serial.print("Hello");
+  delay(1000);
 }
 
-// loop()と，ここから呼び出される関数ではdelay()使用禁止
-void loop() {
+void loop(void) {
   if (millis() - time_100Hz >= 10) {
     time_100Hz += 10;
-    count_10Hz++;  //100Hz処理されたときに+1
-    if (count_10Hz > 10) {
-      count_10Hz = 0;
-      // 10Hzで実行する処理
-      //BME280]
-      sensors_event_t temp_event, pressure_event, humidity_event;
-      bme_temp->getEvent(&temp_event);
-      bme_pressure->getEvent(&pressure_event);
-      bme_humidity->getEvent(&humidity_event);
-      get_bme_pressure[count_10Hz] = pressure_event.pressure;  //bmeの生データを配列に格納
-      get_bme_temperature[count_10Hz] = temp_event.temperature;
-      get_bme_humidity[count_10Hz] = humidity_event.relative_humidity;
-      //BNO055
+    count_10Hz++;
+
+    if (count_10Hz >= 10) {
+      dataIndex = count_median_exection % 5;
+      count_median_exection++;
+
+      //could add VECTOR_ACCELEROMETER, VECTOR_MAGNETOMETER,VECTOR_GRAVITY...
       sensors_event_t orientationData, angVelocityData, linearAccelData, magnetometerData, accelerometerData, gravityData;
       bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
       bno.getEvent(&angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
@@ -115,73 +136,116 @@ void loop() {
       bno.getEvent(&accelerometerData, Adafruit_BNO055::VECTOR_ACCELEROMETER);
       bno.getEvent(&gravityData, Adafruit_BNO055::VECTOR_GRAVITY);
 
-      printEvent(&orientationData, orientation_data, count_10Hz);
-      printEvent(&angVelocityData, velocity_data, count_10Hz);
-      printEvent(&linearAccelData, linearaccel_data, count_10Hz);
-      printEvent(&magnetometerData, magnetometer_data, count_10Hz);
-      printEvent(&accelerometerData, accel_data, count_10Hz);
-      printEvent(&gravityData, gravity_data, count_10Hz);
+      printEvent(&orientationData, orientation_data, dataIndex);
+      printEvent(&angVelocityData, velocity_data, dataIndex);
+      printEvent(&linearAccelData, linearaccel_data, dataIndex);
+      printEvent(&magnetometerData, magnetometer_data, dataIndex);
+      printEvent(&accelerometerData, accel_data, dataIndex);
+      printEvent(&gravityData, gravity_data, dataIndex);
 
-      //キャリブレーション(センサーや計測機器が正確に測定できるように調整するプロセス)の実行
+      get_bme_pressure[count_10Hz] = bme.readPressure() / 100.0F;
+      get_bme_temperature[count_10Hz] = bme.readTemperature();
+      get_bme_altitude[count_10Hz] = bme.readAltitude(SEALEVELPRESSURE_HPA);
+      // get_bme_humidity[count_10Hz] = humidity_event.relative_humidity;
+
       uint8_t system, gyro, accel, mag = 0;
       bno.getCalibration(&system, &gyro, &accel, &mag);
-      //50HZで実行する処理
-      if (count_10Hz %= 50) {
 
-        //BNOの中央値計算50Hz処理
-        medianfilter_50Hz(accel_data, bno_accel_median);
-        medianfilter_50Hz(orientation_data, bno_orient_median);
-        medianfilter_50Hz(velocity_data, bno_velocity_median);
-        medianfilter_50Hz(linearaccel_data, bno_linearaccel_median);
-        medianfilter_50Hz(magnetometer_data, bno_magnet_median);
-        medianfilter_50Hz(gravity_data, bno_gravity_median);
+      delay(BNO055_SAMPLERATE_DELAY_MS);
 
-        transfer_to_can(bno_accel_median, fasejudge_xiao);  //BNO055(状態遷移xiaoへCAN送信)
-        transfer_to_can(bno_orient_median, logger_xiao);    //BNO(記録部へCAN送信)
-        transfer_to_can(bno_velocity_median, logger_xiao);  //BNO(記録部へCAN送信)
-        transfer_to_can(bno_magnet_median, logger_xiao);    //BNO(記録部へCAN送信)
-        transfer_to_can(bno_gravity_median, logger_xiao);   //BNO(記録部へCAN送信)
-        transfer_to_can(bno_accel_median, logger_xiao);     //BNO(記録部へCAN送信)
+      if (count_median_exection % 5 == 0) {
+        digitalWrite(PWM_LED_RED, HIGH);
+        medianfilter_50Hz_output(accel_data, bno_accel_median);
+        medianfilter_50Hz_output(orientation_data, bno_orient_median);
+        medianfilter_50Hz_output(velocity_data, bno_velocity_median);
+        medianfilter_50Hz_output(linearaccel_data, bno_linearaccel_median);
+        medianfilter_50Hz_output(magnetometer_data, bno_magnet_median);
+        medianfilter_50Hz_output(gravity_data, bno_gravity_median);
+        //CAN_to_device
+        send_by_CAN(CAN_id_accel_x,CAN_id_accel_y,CAN_id_accel_z, bno_accel_median);
+        send_by_CAN(CAN_id_orient_x,CAN_id_orient_y,CAN_id_orient_z, bno_orient_median);
+        send_by_CAN(CAN_id_velocity_x,CAN_id_velocity_y,CAN_id_velocity_z, bno_velocity_median);
+        send_by_CAN(CAN_id_linearaccel_x, CAN_id_linearaccel_y, CAN_id_linearaccel_z, bno_linearaccel_median);
+        send_by_CAN(CAN_id_magnet_x,CAN_id_magnet_y,CAN_id_magnet_z, bno_magnet_median);
+        send_by_CAN(CAN_id_gravity_x, CAN_id_gravity_y,CAN_id_gravity_z,bno_gravity_median);
+
+        Serial.print("accel");
+        print_data(bno_accel_median);
+        Serial.print("orient");
+        print_data(bno_orient_median);
+        Serial.print("velocity");
+        print_data(bno_velocity_median);
+        Serial.print("linearaccel");
+        print_data(bno_linearaccel_median);
+        Serial.print("magnet");
+        print_data(bno_magnet_median);
+        Serial.print("gravity");
+        print_data(bno_gravity_median);
+        Serial.println("---------------------------------");
+        digitalWrite(PWM_LED_RED, LOW);
       }
+      if (count_median_exection % 10 == 0) {
+
+        pressure_median = findMedian(get_bme_pressure, 10);
+        temperature_median = findMedian(get_bme_temperature, 10);
+        altitude_median = findMedian(get_bme_altitude, 10);
+        // humidity_median = findMedian(get_bme_humidity, 10);
+        //CAN_to_record
+        CCP.float_to_device(CAN_id_pressure, pressure_median);
+        CCP.float_to_device(CAN_id_temperature, temperature_median);
+        //CAN_to_main
+        CCP.float_to_device()
+          Serial.print("気圧：");
+        Serial.println(pressure_median);
+        Serial.print("気温：");
+        Serial.println(temperature_median);
+        Serial.print("高度：");
+        Serial.println(altitude_median);
+        // Serial.print("湿度：");
+        // Serial.println(humidity_median);
+      }
+      count_10Hz = 0;
     }
-    //100Hzで実行する処理
-    //LED
-    digitalWrite(PWM_LED_RED, HIGH);
-    pressure_median = medianfilter_100Hz(get_bme_pressure);
-    temperature_median = medianfilter_100Hz(get_bme_temperature);
-    humidity_median = medianfilter_100Hz(get_bme_humidity);
-    ccp.float_to_device(fasejudge_xiao, pressure_median);  //BME280(状態遷移xiaoへCAN送信)
-    ccp.float_to_device(logger_xiao, temperature_median);  //BNO(記録部へCAN送信)
-    ccp.float_to_device(logger_xiao, humidity_median);     //BNO(記録部へCAN送信)
-    digitalWrite(PWM_LED_RED, LOW);
-  }
-  // 常に実行する処理
-  int sensorValue = analogRead(voltagePin);      // アナログ入力から値を読み取る
-  float voltage = sensorValue * (5.0 / 1023.0);  // センサ値を電圧に変換（5V基準）
-  if (voltage >= thresholdVoltage) {             //参考に
-    Serial.println(1);                           // しきい値を超えたら1を出力
-  } else {
-    Serial.println(2);  // しきい値を超えなければ2を出力
   }
 }
 
-//50Hz中央値計算
-void medianfilter_50Hz(float dataholder[5][3], float datamedian[3]) {
-  float temp[5];
+void send_by_CAN(float CAN_id_x, float CAN_id_y,float CAN_id_z,float datamedian[3]) {
+  for (int i = 0; i < 3; i++) {
+    if(i==0){
+      CCP.float_to_device(CAN_id_x, datamedian[i]);
+    }else if(i==1){
+      CCP.float_to_device(CAN_id_y, datamedian[i]);
+    }else if(i==2){
+      CCP.float_to_device(CAN_id_z, datamedian[i]);
+    }
+  }
+}
+void print_data(float datamedian[3]) {
+  for (int i = 0; i < 3; i++) {
+    if (i == 0) {
+      Serial.print("x:");
+    } else if (i == 1) {
+      Serial.print("y:");
+    } else {
+      Serial.print("z:");
+    }
+    Serial.print(datamedian[i]);
+    Serial.print(", ");
+  }
+  Serial.println();
+}
 
-  for (int i = 0; i < 3; i++) {  // i=0でx軸,i=1でy軸,i=2でz軸に分類
+
+void medianfilter_50Hz_output(float dataholder[5][3], float datamedian[3]) {
+  float temp[5];
+  for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 5; j++) {
       temp[j] = dataholder[j][i];
     }
     datamedian[i] = findMedian(temp, 5);
   }
-  return 0;
 }
-//100Hz中央値計算
-float medianfilter_100Hz(float get_data[]) {
-  return findMedian(get_data, 10);
-}
-//中央値を求めるためにソート
+
 float findMedian(float arr[], int n) {
   // 一時的な配列をソート
   sortArray(arr, n);
@@ -205,17 +269,10 @@ void sortArray(float arr[], int n) {
       }
     }
   }
-  return 0;
 }
-//CANへのデータ送信(配列)
-void transfer_to_can(float mediandata, int canid_name) {
-  for (int i = 0; i < 3; i++) {
-    ccp.float_to_device(canid_name, mediandata[i]);
-  }
-  return 0;
-}
+
 //get_bno055data
-void printEvent(sensors_event_t *event, float dataholder[][3], int count) {
+void printEvent(sensors_event_t *event, float dataholder[5][3], int count) {
   double x = -1000000, y = -1000000, z = -1000000;
 
   if (event->type == SENSOR_TYPE_ACCELEROMETER) {
@@ -239,7 +296,6 @@ void printEvent(sensors_event_t *event, float dataholder[][3], int count) {
     y = event->gyro.y;
     z = event->gyro.z;
   } else if (event->type == SENSOR_TYPE_LINEAR_ACCELERATION) {
-    Serial.print("Linear:");
     x = event->acceleration.x;
     y = event->acceleration.y;
     z = event->acceleration.z;
@@ -250,13 +306,8 @@ void printEvent(sensors_event_t *event, float dataholder[][3], int count) {
   } else {
     Serial.print("Unk:");
   }
+
   dataholder[count][0] = x;
   dataholder[count][1] = y;
   dataholder[count][2] = z;
 }
-
-/*
-error_number
-000:bme280 no detected
-001:bno055 no detected
-*/
