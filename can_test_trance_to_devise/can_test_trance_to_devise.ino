@@ -1,8 +1,7 @@
-#define CPP_A_pressure_altitude_m 0x080
 //CAN
 #include <CCP_MCP2515.h>
-#define CAN0_INT 2
-#define CAN0_CS 3
+#define CAN0_INT D1
+#define CAN0_CS D0
 CCP_MCP2515 CCP(CAN0_CS, CAN0_INT);
 
 double altitude_median = 0;
