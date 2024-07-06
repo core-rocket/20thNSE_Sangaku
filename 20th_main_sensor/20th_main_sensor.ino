@@ -190,7 +190,7 @@ void loop(void) {
         Serial.println(temperature_median);
         Serial.print("高度：");
         Serial.println(altitude_median);
-        printValues();
+        // printValues();
         // Serial.print("湿度：");
         // Serial.println(humidity_median);
       count_10Hz = 0;
@@ -251,7 +251,7 @@ void sortArray(float arr[], int n) {
 }
 
 //get_bno055data
-void printEvent(sensors_event_t *event, float dataholder[5][3], int count) {
+void printEvent(sensors_event_t *event, float dataholder[10][3], int count) {
   double x = -1000000, y = -1000000, z = -1000000;
 
   if (event->type == SENSOR_TYPE_ACCELEROMETER) {
@@ -289,24 +289,4 @@ void printEvent(sensors_event_t *event, float dataholder[5][3], int count) {
   dataholder[count][0] = x;
   dataholder[count][1] = y;
   dataholder[count][2] = z;
-}
-void printValues() {
-  Serial.print("Temperature = ");
-  Serial.print(bme.readTemperature());
-  Serial.println(" °C");
-
-  Serial.print("Pressure = ");
-
-  Serial.print(bme.readPressure() / 100.0F);
-  Serial.println(" hPa");
-
-  Serial.print("Approx. Altitude = ");
-  Serial.print(bme.readAltitude(SEALEVELPRESSURE_HPA));
-  Serial.println(" m");
-
-  Serial.print("Humidity = ");
-  Serial.print(bme.readHumidity());
-  Serial.println(" %");
-
-  Serial.println();
 }
