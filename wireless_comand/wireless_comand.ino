@@ -1,8 +1,6 @@
 #include <SPI.h>
 #include <string.h>
 #include <CCP_MCP2515.h>
-#include <TimerTCC0.h>
-#include <TimerTC3.h>
 
 //CAN
 #define CAN0_CS D0
