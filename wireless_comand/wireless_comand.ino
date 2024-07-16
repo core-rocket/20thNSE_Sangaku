@@ -13,6 +13,7 @@ CCP_MCP2515 CCP(CAN0_CS, CAN0_INT);
 
 void setup() {
   Serial.begin(115200);
+  Serial1.begin(115200);
   // CAN設定
   pinMode(CAN0_CS, OUTPUT);  //0ピンをCAN通信の送信用に設定
   pinMode(CAN0_INT, INPUT);  //1ピンをCAN通信の入力用に設定
