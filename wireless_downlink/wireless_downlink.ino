@@ -13,6 +13,18 @@ CCP_MCP2515 CCP(CAN0_CS, CAN0_INT);
 bool is100hz = false;
 bool is1hz = false;
 
+//テレメトリー
+int downlink_key = 0;
+int downlink_emst = 0;
+int downlink_STM_1 = 0;  //state transition model
+int downlink_STM_2 = 0;
+int downlink_open_accel = 0;
+int downlink_open_altitude = 0;
+int downlink_outground_accel = 0;
+int downlink_outground_altitude = 0;
+int downlink_meco_time = 0;
+int downlink_top_time = 0;
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -42,18 +54,83 @@ void loop() {
   if (!digitalRead(CAN0_INT))  // データ受信確認
   {
     CCP.read_device();
-    switch (CCP.id) {
-      case :
-        ;
+    switch (CCP.id) {]
+      case CCP_parachute_fuse:
+        if (CCP.str_match("NOTOPEN", 7)) {
+        downlink_emst = 1;
+      }
+      else if (CCP.str_match("CLEAR", 5)) {
+        downlink_emst = 0;
+      }
+      break;
+      case CCP_key_state:
+        if (CCP.str_match("ON", 2)) {
+          downlink_key = 1;
+        } else if (CCP.str_match("OFF", 3)) {
+          downlink_key = 0;
+        }
         break;
-      case :
-        ;
+      case CCP_opener_state:
+        if (CCP.str_match("CHECK", 5)) {
+          downlink_STM_1 = 0;
+          downlink_STM_2 = 0;
+        } else if (CCP.str_match("READY", 5)) {
+          downlink_STM_1 = 0;
+          downlink_STM_2 = 1;
+        } else if (CCP.str_match("FLIGHT", 6)) {
+          downlink_STM_1 = 1;
+          downlink_STM_2 = 0;
+        } else if (CCP.str_match("OPENED", 6)) {
+          downlink_STM_1 = 1;
+          downlink_STM_2 = 1;
+        }
         break;
-      case :
-        ;
+      case CCP_lift_off_judge:
+        if (CCP.str_match("ACCSEN", 6)) {
+          downlink_outground_accel = 1;
+        } else if (CCP.str_match("ALTSEN", 6)) {
+          downlink_outground_altitude = 1;
+        } else if (CCP.str_match("------", 6)) {
+          downlink_outground_altitude = 0;
+          downlink_outground_altitude = 0;
+        }
+        break;
+      case CCP_lift_off_judge:
+        if (CCP.str_match("ACCSEN", 6)) {
+          downlink_meco_time = 1;
+        }
+        break;
+      case CCP_lift_off_judge:
+        if (CCP.str_match("ACCSEN", 6)) {
+          downlink_top_time = 1;
+        }
+        break;
+      case CCP_lift_off_judge:
+        if (CCP.str_match("ACCSEN", 6)) {
+          downlink_open_accel = 1;
+        } 
+        break;
+      case CCP_lift_off_judge:
+        if (CCP.str_match("ACCSEN", 6)) {
+          downlink_open_altitude = 1;
+        } 
         break;
       default:
         break;
     }
   }
+
+  //Downlink
+  //テレメトリ送信
+  Serial1.print("downlink:");
+  Serial1.print(downlink_emst);
+  Serial1.print(downlink_key);
+  Serial1.print(downlink_STM_1);
+  Serial1.print(downlink_STM_2);
+  Serial1.print(downlink_outground_accel);
+  Serial1.print(downlink_outground_altitude);
+  Serial1.print(downlink_meco_time);
+  Serial1.print(downlink_top_time);
+  Serial1.print(downlink_open_accel);
+  Serial1.println(downlink_open_altitude);
 }
