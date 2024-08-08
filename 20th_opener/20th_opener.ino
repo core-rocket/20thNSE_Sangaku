@@ -1,9 +1,9 @@
 //閾値設定
-float accel_threshold = 6.0;          //離床判定に用いるmss
-float altitude_threshold = 2.0;       //離床判定に用いるms
-float accel_open_threshold = -6.0;    //開放判定に用いるmss
-float altitude_open_threshold = 2.0;  //開放判定に用いるms
-float time_interval = 0.1;            //単位時間当たりの高度差を求めるための単位時間設定
+float accel_threshold = 110.0;           //離床判定に用いるm/ss
+float altitude_threshold = 0.8;        //離床判定に用いるm/s
+float accel_open_threshold = -110.0;     //開放判定に用いるm/ss
+float altitude_open_threshold = -0.8;  //開放判定に用いるm/s
+// float time_interval = 0.1;             //単位時間当たりの高度差を求めるための単位時間設定
 //試験用に閾値を超えるように設定してある本番は0.1s(sensor部からデータが送られてくる間隔)
 unsigned long maxaltime = 12000;
 unsigned long mecotime = 5000;
@@ -18,7 +18,7 @@ unsigned long time_data_ms = 0;  //離床判定タイマー(燃焼終了検知)
 int nowphase = 0;                //now_state
 int pinState = 0;                //key
 float altitude_tmp_m = 0;        //高度データの一時保管
-float altitude_per_time = 0;     //判定に用いるデータ格納(altitudedata_m-altitude_tmp_m)/0.01
+float altitude_difference = 0;     //判定に用いるデータ格納(altitudedata_m-altitude_tmp_m)/0.01
 //データ格納変数
 float acceldata_mss = 0;
 float altitudedata_m = 0;
@@ -34,10 +34,10 @@ bool open_altitude_time = false;    //高度検知or頂点到達
 unsigned long time_100Hz = 0;  //100Hz
 int count_10Hz = 0;            //10Hz
 int count = 0;                 //1Hz処理を行うために用いる
-int accel_tmp_count = 0;       //加速度が閾値の条件を満たす回数をカウント
-int altitude_count = 0;        //高度が閾値の条件を満たす回数をカウント
-int accel_count = 0;           //加速度が閾値の条件を満たす回数をカウント
+int accel_ground_count = 0;    //加速度が閾値の条件を満たす回数をカウント
 int altitude_open_count = 0;   //高度が閾値の条件を満たす回数をカウント
+int altitude_ground_count = 0;
+int accel_open_count = 0;  //加速度が閾値の条件を満たす回数をカウント
 
 //テレメトリー
 int downlink_key = 0;
@@ -92,6 +92,18 @@ void setup() {
 void loop() {
   if (millis() - time_100Hz >= 10) {
     time_100Hz += 10;
+    // //テレメトリ送信
+    // Serial.print("downlink:");
+    // Serial.print(downlink_emst);
+    // Serial.print(downlink_key);
+    // Serial.print(downlink_STM_1);
+    // Serial.print(downlink_STM_2);
+    // Serial.print(downlink_outground_accel);
+    // Serial.print(downlink_outground_altitude);
+    // Serial.print(downlink_meco_time);
+    // Serial.print(downlink_top_time);
+    // Serial.print(downlink_open_accel);
+    // Serial.println(downlink_open_altitude);
     count_10Hz++;  //100Hz処理されたときに+1
     if (count_10Hz > 10) {
       //10Hz
@@ -99,6 +111,18 @@ void loop() {
       count++;
       if (count > 10) {
         //1Hz
+        //テレメトリ送信
+        Serial.print("downlink:");
+        Serial.print(downlink_emst);
+        Serial.print(downlink_key);
+        Serial.print(downlink_STM_1);
+        Serial.print(downlink_STM_2);
+        Serial.print(downlink_outground_accel);
+        Serial.print(downlink_outground_altitude);
+        Serial.print(downlink_meco_time);
+        Serial.print(downlink_top_time);
+        Serial.print(downlink_open_accel);
+        Serial.println(downlink_open_altitude);
         count = 0;
         //数値デバック
         // Serial.println(altitudedata_m);
@@ -134,37 +158,15 @@ void loop() {
       case CCP_A_altitude_m:
         altitude_tmp_m = altitudedata_m;
         altitudedata_m = CCP.data_float();  //高度の値を代入
-        altitude_per_time = altitude_per_time = (altitudedata_m - altitude_tmp_m) / time_interval;
-        // Serial.print("単位時間あたりの高度");debag
-        // Serial.println(altitude_per_time);
+        altitude_difference = (altitudedata_m - altitude_tmp_m);
+        Serial.print("高度差");//debag
+        Serial.println(altitude_difference);
         break;
     }
-    //開放判定用の加速度・高度検知
-    if ((acceldata_mss < accel_open_threshold) && (!acceljudge_open) && (acceljudge_ground)) {
-      accel_count++;
-      if (accel_count > 4) {
-        accel_count = 0;
-        acceljudge_open = true;
-        // Serial.println("加速度減少");
-      }
-    } else {
-      accel_count = 0;
-    }
-    if ((altitude_per_time < altitude_open_threshold) && (!altitudejudge_open) && (altitudejudge_ground)) {
-      altitude_count++;
-      if (altitude_count > 4) {
-        altitude_count = 0;
-        altitudejudge_open = true;
-        // Serial.println("高度減少");
-      }
-    } else {
-      altitude_count = 0;
-    }
-
     switch (nowphase) {
       case 0:
         pinState = digitalRead(4);  // GPIO4ピンの状態を読み取る
-        if ((pinState == LOW) && (ready_judge)) {
+        if ((pinState == LOW) || (ready_judge)) {
           nowphase = 1;
           CCP.string_to_device(CCP_opener_state, "READY");
         } else {
@@ -205,12 +207,60 @@ void loop() {
     }
   }
   //常に実行する処理
+  //(R-F)加速度による離床判定
+  if ((acceldata_mss > accel_threshold) && (!acceljudge_ground) && (nowphase >= 1)) {
+    accel_ground_count++;
+    // Serial.println(accel_ground_count);
+    if (accel_ground_count > 4) {
+      // Serial.println("加速度検知");
+      acceljudge_ground = true;
+    }
+  } else {
+    accel_ground_count = 0;
+  }
+  //(R-F)高度による離床判定
+
+  if ((altitude_difference > altitude_threshold) && (!altitudejudge_ground) && (nowphase >= 1)) {
+    altitude_ground_count++;
+    // Serial.println(altitude_ground_count);
+    if (altitude_ground_count > 4) {
+      altitudejudge_ground = true;
+      altitude_ground_count = 0;
+      // Serial.println("----高度上昇--------------------------");
+    }
+  } else {
+    altitude_ground_count = 0;
+    // Serial.println(altitude_ground_count);
+  }
+  //開放判定用の加速度・高度検知
+  if ((acceldata_mss < accel_open_threshold) && (!acceljudge_open) && (acceljudge_ground)) {
+    accel_open_count++;
+    if (accel_open_count > 4) {
+      accel_open_count = 0;
+      acceljudge_open = true;
+      // Serial.println("加速度減少");
+    }
+  } else {
+    accel_open_count = 0;
+  }
+  if ((altitude_difference < altitude_open_threshold) && (!altitudejudge_open) && (altitudejudge_ground)) {
+    altitude_open_count++;
+    if (altitude_open_count > 4) {
+      altitude_open_count = 0;
+      altitudejudge_open = true;
+      // Serial.println("高度減少");
+    }
+  } else {
+    altitude_open_count = 0;
+  }
   //key
-  pinState = digitalRead(4);  // GPIO4ピンの状態を読み取る
-  if (pinState == HIGH) {
-    gocheck();
-    ready_judge = false;
-    downlink_key = 0;
+  if (downlink_key == 1) {
+    pinState = digitalRead(4);  // GPIO4ピンの状態を読み取る
+    if (pinState == HIGH) {
+      gocheck();
+      ready_judge = false;
+      downlink_key = 0;
+    }
   }
   switch (nowphase) {
     case 0:
@@ -351,9 +401,10 @@ void loop() {
     reset();
   }
   void reset() {
-    accel_tmp_count = 0;           //加速度が閾値の条件を満たす回数をカウント
-    altitude_count = 0;            //高度が閾値の条件を満たす回数をカウント
-    accel_count = 0;               //加速度が閾値の条件を満たす回数をカウント
+    accel_ground_count = 0;   //加速度が閾値の条件を満たす回数をカウント
+    altitude_open_count = 0;  //高度が閾値の条件を満たす回数をカウント
+    altitude_ground_count = 0;
+    accel_open_count = 0;   
     altitude_open_count = 0;       //高度が閾値の条件を満たす回数をカウント
     acceljudge_ground = false;     //加速度による離床判定
     altitudejudge_ground = false;  //高度による離床判定
