@@ -119,13 +119,15 @@ void loop() {
     Serial.print(downlink_top_time);
     Serial.print(downlink_open_accel);
     Serial.println(downlink_open_altitude);
+
+
     CCP.read_device();
     switch (CCP.id) {
-      case CCP_opener_control:
-        // if (CCP.str_match("CHECK", 5)) goCHECK();
-        // if (CCP.str_match("READY", 5)) goREADY();
-        // if (CCP.str_match("EMST", 4)) downlink_emst = 1;
-        break;
+      // case CCP_opener_control:
+      //   // if (CCP.str_match("CHECK", 5)) goCHECK();
+      //   // if (CCP.str_match("READY", 5)) goREADY();
+      //   // if (CCP.str_match("EMST", 4)) downlink_emst = 1;
+      //   break;
       case CCP_A_accel_mss:
         acceldata_mss = CCP.data_fp16_2();  //加速度のZ軸方向の値を代入
         break;
@@ -164,6 +166,9 @@ void loop() {
         pinState = digitalRead(4);  // GPIO4ピンの状態を読み取る
         if ((pinState == LOW) && (ready_judge)) {
           nowphase = 1;
+          CCP.string_to_device(CCP_opener_state, "READY");
+        } else {
+          CCP.string_to_device(CCP_opener_state, "CHECK");
         }
         break;
       case 1:
@@ -174,6 +179,7 @@ void loop() {
           if (accel_tmp_count > 4) {
             // Serial.println("加速度検知");
             acceljudge_ground = true;
+            CCP.string_to_device(CCP_lift_off_judge, "ACCSEN");
           }
         } else {
           accel_tmp_count = 0;
@@ -184,6 +190,7 @@ void loop() {
           altitude_count++;
           if (altitude_count > 4) {
             altitudejudge_ground = true;
+            CCP.string_to_device(CCP_lift_off_judge, "ALTSEN");
             altitude_count = 0;
             // Serial.println("----高度上昇--------------------------");
           }
@@ -199,7 +206,7 @@ void loop() {
   }
   //常に実行する処理
   //key
-    pinState = digitalRead(4);  // GPIO4ピンの状態を読み取る
+  pinState = digitalRead(4);  // GPIO4ピンの状態を読み取る
   if (pinState == HIGH) {
     gocheck();
     ready_judge = false;
@@ -209,8 +216,9 @@ void loop() {
     case 0:
       break;
     case 1:
-      if ((acceljudge_ground) && (altitudejudge_ground)) {
+      if ((acceljudge_ground) || (altitudejudge_ground)) {
         nowphase = 2;
+        CCP.string_to_device(CCP_opener_state, "FLIGHT");
         // Serial.println("----------------READY to FLIGHT-------------");
         time_data_ms = millis();
       }
@@ -233,6 +241,7 @@ void loop() {
       if ((open_altitude_time) && (open_accel_time) && (emst)) {
         // Serial.println("--------servo_power_ON,OPENED--------------------");
         nowphase = 3;
+        CCP.string_to_device(CCP_opener_state, "OPENED");
       }
       break;
     case 3:
@@ -284,57 +293,86 @@ void loop() {
     downlink_open_altitude = 1;  //高度による開放判定
   }
   //アップリンク
-  if (Serial.available() > 0) {
-    String input = Serial.readStringUntil('\n');  // シリアルモニタからの入力を読み取る
-    input.trim();                                 // 入力の前後の空白を削除
+  // if (Serial.available() > 0) {
+  //   String input = Serial.readStringUntil('\n');  // シリアルモニタからの入力を読み取る
+  //   input.trim();                                 // 入力の前後の空白を削除
 
-    Serial.print("Received input: ");  // デバッグメッセージ
-    Serial.println(input);
+  //   Serial.print("Received input: ");  // デバッグメッセージ
+  //   Serial.println(input);
 
-    if (input == "CHECK") {
-      gocheck();
-    } else if (input == "READY") {
-      ready_judge = true;
-      goready();
-    } else if (input == "EMST") {
-      emst = false;
-    } else if (input == "OPEN") {
-      emst = true;
-    } else {
-      Serial.println("Unknown command");  // 不明なコマンドの場合のデバッグメッセージ
-    }
+  //   if (input == "CHECK") {
+  //     gocheck();
+  //   } else if (input == "READY") {
+  //     ready_judge = true;
+  //     goready();
+  //   } else if (input == "EMST") {
+  //     emst = false;
+  //   } else if (input == "OPEN") {
+  //     emst = true;
+  //   } else {
+  //     Serial.println("Unknown command");  // 不明なコマンドの場合のデバッグメッセージ
+  //   }
+  // }
+
+  CCP.read_device();
+  switch (CCP.id) {
+    case CCP_opener_control:
+      if (CCP.str_match("CHECK", 5)) {
+        gocheck();
+      } else if (CCP.str_match("READY", 5)) {
+        goready();
+      }
+      break;
+    case CCP_parachute_fuse:
+      if (CCP.str_match("NOTOPEN", 7)) {
+        emst = false;
+      } else if (CCP.str_match("CLEAR", 5)) {
+        emst = true;
+        break;
+        case CCP_A_altitude_m:
+          altitude_tmp_m = altitudedata_m;
+          altitudedata_m = CCP.data_float();  //高度の値を代入
+          altitude_per_time = altitude_per_time = (altitudedata_m - altitude_tmp_m) / time_interval;
+          // Serial.print("単位時間あたりの高度");debag
+          // Serial.println(altitude_per_time);
+          break;
+      }
   }
-}
-void gocheck() {
-  nowphase = 0;
-  ready_judge = false;
-  reset();
-}
-void goready() {
-  ready_judge = true;
-  reset();
-}
-void reset() {
-  accel_tmp_count = 0;           //加速度が閾値の条件を満たす回数をカウント
-  altitude_count = 0;            //高度が閾値の条件を満たす回数をカウント
-  accel_count = 0;               //加速度が閾値の条件を満たす回数をカウント
-  altitude_open_count = 0;       //高度が閾値の条件を満たす回数をカウント
-  acceljudge_ground = false;     //加速度による離床判定
-  altitudejudge_ground = false;  //高度による離床判定
-  acceljudge_open = false;       //加速度による開放判定
-  altitudejudge_open = false;    //高度による開放判定
-  open_accel_time = false;
-  open_altitude_time = false;
-  mecotime_data_judge_ms = false;     //燃焼終了検知
-  maxaltitude_data_judge_ms = false;  //頂点到達検知
-  time_data_ms = 0;                   //離床判定タイマー(燃焼終了検知)
-  //テレメトリ
-  downlink_STM_1 = 0;  //state transition model
-  downlink_STM_2 = 0;
-  downlink_open_accel = 0;
-  downlink_open_altitude = 0;
-  downlink_outground_accel = 0;
-  downlink_outground_altitude = 0;
-  downlink_meco_time = 0;
-  downlink_top_time = 0;
-}
+  void gocheck() {
+    nowphase = 0;
+    CCP.string_to_device(CCP_opener_state, "CHECK");
+    ready_judge = false;
+    reset();
+  }
+  void goready() {
+    nowphase = 1;
+    CCP.string_to_device(CCP_opener_state, "READY");
+    ready_judge = true;
+    reset();
+  }
+  void reset() {
+    accel_tmp_count = 0;           //加速度が閾値の条件を満たす回数をカウント
+    altitude_count = 0;            //高度が閾値の条件を満たす回数をカウント
+    accel_count = 0;               //加速度が閾値の条件を満たす回数をカウント
+    altitude_open_count = 0;       //高度が閾値の条件を満たす回数をカウント
+    acceljudge_ground = false;     //加速度による離床判定
+    altitudejudge_ground = false;  //高度による離床判定
+    acceljudge_open = false;       //加速度による開放判定
+    altitudejudge_open = false;    //高度による開放判定
+    open_accel_time = false;
+    open_altitude_time = false;
+    mecotime_data_judge_ms = false;     //燃焼終了検知
+    maxaltitude_data_judge_ms = false;  //頂点到達検知
+    time_data_ms = 0;                   //離床判定タイマー(燃焼終了検知)
+    //テレメトリ
+    downlink_STM_1 = 0;  //state transition model
+    downlink_STM_2 = 0;
+    downlink_open_accel = 0;
+    downlink_open_altitude = 0;
+    downlink_outground_accel = 0;
+    downlink_outground_altitude = 0;
+    downlink_meco_time = 0;
+    downlink_top_time = 0;
+
+    CCP.string_to_device(CCP_lift_off_judge, "------");
+  }
