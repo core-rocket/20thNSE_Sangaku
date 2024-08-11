@@ -7,8 +7,8 @@
 
 #define Wire_SDA 6
 #define Wire_SCL 7
-#define PWM_LED_RED 20
-#define PWM_LED_BLUE 21
+#define PWM_LED_RED 20   //値取得・送信確認用&エラー確認用
+#define PWM_LED_BLUE 21  //エラー確認用
 
 #define bme_I2Cadr 0x77
 
@@ -21,11 +21,9 @@ CCP_MCP2515 CCP(CAN0_CS, CAN0_INT);
 
 /* Set the delay between fresh samples */
 uint16_t BNO055_SAMPLERATE_DELAY_MS = 100;
-
 // Check I2C device address and correct line below (by default address is 0x29 or 0x28)
 // id, address
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28, &Wire);
-
 float accel_data[10][3];
 float orientation_data[10][3];
 float velocity_data[10][3];
@@ -46,19 +44,15 @@ Adafruit_Sensor *bme_temp = bme.getTemperatureSensor();
 Adafruit_Sensor *bme_pressure = bme.getPressureSensor();
 Adafruit_Sensor *bme_humidity = bme.getHumiditySensor();
 #define SEALEVELPRESSURE_HPA (1013.25)
-// #define BME_SCK 13
-// #define BME_MISO 12
-// #define BME_MOSI 11
-// #define BME_CS 10
-
-
+float sealevelpressure = 1013.25;
 float get_bme_pressure[10];
 float get_bme_temperature[10];
 float get_bme_altitude[10];
 float get_bme_humidity[10];
 float pressure_median;
 float temperature_median;
-float altitude_median;
+float altitude_median_1;
+float altitude_median_2;
 float humidity_median;
 
 //global
@@ -74,9 +68,8 @@ void setup(void) {
   pinMode(PWM_LED_BLUE, OUTPUT);
 
   while (!Serial) delay(10);  // wait for serial port to open!
-
-  Serial.println("Orientation Sensor Test");
-  Serial.println("Hello");
+  digitalWrite(PWM_LED_RED, HIGH);
+  digitalWrite(PWM_LED_BLUE, HIGH);
   unsigned status;
   // default settings
   status = bme.begin();
@@ -97,9 +90,9 @@ void setup(void) {
   Serial.println(F("BME280 Sensor event test"));
   if (!bme.begin(bme_I2Cadr)) {
     Serial.println(F("Could not find a valid BME280 sensor, check wiring!"));
+    digitalWrite(PWM_LED_BLUE, HIGH);
     while (1) delay(10);
   }
-
   bme_temp->printSensorDetails();
   bme_pressure->printSensorDetails();
   bme_humidity->printSensorDetails();
@@ -108,91 +101,94 @@ void setup(void) {
   if (!bno.begin()) {
     /* There was a problem detecting the BNO055 ... check your connections */
     Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+    digitalWrite(PWM_LED_BLUE, HIGH);
     while (1)
       ;
   }
-
-
-  // bme_humidity->printSensorDetails();
-  Serial.print("Hello");
   delay(1000);
+  digitalWrite(PWM_LED_BLUE, LOW);
 }
 
 void loop(void) {
   if (millis() - time_100Hz >= 10) {
+    //100Hz処理
     time_100Hz += 10;
     count_10Hz++;
     //could add VECTOR_ACCELEROMETER, VECTOR_MAGNETOMETER,VECTOR_GRAVITY...
-      sensors_event_t orientationData, angVelocityData, linearAccelData, magnetometerData, accelerometerData, gravityData;
-      bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
-      bno.getEvent(&angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
-      bno.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
-      bno.getEvent(&magnetometerData, Adafruit_BNO055::VECTOR_MAGNETOMETER);
-      bno.getEvent(&accelerometerData, Adafruit_BNO055::VECTOR_ACCELEROMETER);
-      bno.getEvent(&gravityData, Adafruit_BNO055::VECTOR_GRAVITY);
+    sensors_event_t orientationData, angVelocityData, linearAccelData, magnetometerData, accelerometerData, gravityData;
+    bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
+    bno.getEvent(&angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
+    bno.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
+    bno.getEvent(&magnetometerData, Adafruit_BNO055::VECTOR_MAGNETOMETER);
+    bno.getEvent(&accelerometerData, Adafruit_BNO055::VECTOR_ACCELEROMETER);
+    bno.getEvent(&gravityData, Adafruit_BNO055::VECTOR_GRAVITY);
 
-      printEvent(&orientationData, orientation_data, count_10Hz);
-      printEvent(&angVelocityData, velocity_data, count_10Hz);
-      printEvent(&linearAccelData, linearaccel_data, count_10Hz);
-      printEvent(&magnetometerData, magnetometer_data, count_10Hz);
-      printEvent(&accelerometerData, accel_data, count_10Hz);
-      printEvent(&gravityData, gravity_data, count_10Hz);
+    printEvent(&orientationData, orientation_data, count_10Hz);
+    printEvent(&angVelocityData, velocity_data, count_10Hz);
+    printEvent(&linearAccelData, linearaccel_data, count_10Hz);
+    printEvent(&magnetometerData, magnetometer_data, count_10Hz);
+    printEvent(&accelerometerData, accel_data, count_10Hz);
+    printEvent(&gravityData, gravity_data, count_10Hz);
 
-      get_bme_pressure[count_10Hz] = bme.readPressure() / 100.0F;
-      get_bme_temperature[count_10Hz] = bme.readTemperature();
-      get_bme_altitude[count_10Hz] = bme.readAltitude(SEALEVELPRESSURE_HPA);
-      get_bme_humidity[count_10Hz] = bme.readHumidity();
+    get_bme_pressure[count_10Hz] = bme.readPressure() / 100.0F;
+    get_bme_temperature[count_10Hz] = bme.readTemperature();
+    get_bme_altitude[count_10Hz] = bme.readAltitude(SEALEVELPRESSURE_HPA);
+    get_bme_humidity[count_10Hz] = bme.readHumidity();
 
-      uint8_t system, gyro, accel, mag = 0;
-      bno.getCalibration(&system, &gyro, &accel, &mag);
+    uint8_t system, gyro, accel, mag = 0;
+    bno.getCalibration(&system, &gyro, &accel, &mag);
     if (count_10Hz >= 9) {
-        digitalWrite(PWM_LED_RED, HIGH);
-        medianfilter_10Hz_output(accel_data, bno_accel_median);
-        medianfilter_10Hz_output(orientation_data, bno_orient_median);
-        medianfilter_10Hz_output(velocity_data, bno_velocity_median);
-        medianfilter_10Hz_output(linearaccel_data, bno_linearaccel_median);
-        medianfilter_10Hz_output(magnetometer_data, bno_magnet_median);
-        medianfilter_10Hz_output(gravity_data, bno_gravity_median);
-        //CAN_to_device
-        CCP.fp16_to_device(CCP_A_accel_mss, bno_accel_median[0], bno_accel_median[1], bno_accel_median[2]);
-        CCP.fp16_to_device(CCP_A_gyro_rads, bno_orient_median[0], bno_orient_median[1], bno_orient_median[2]);
-        CCP.fp16_to_device(CCP_A_mag_uT, bno_velocity_median[0], bno_velocity_median[1], bno_velocity_median[2]);
-        CCP.fp16_to_device(CCP_A_euler_rad, bno_linearaccel_median[0], bno_linearaccel_median[1], bno_linearaccel_median[2]);
-        CCP.fp16_to_device(CCP_A_magnetic_Am, bno_magnet_median[0], bno_magnet_median[1], bno_magnet_median[2]);
-        CCP.fp16_to_device(CCP_A_gravity_mss, bno_gravity_median[0], bno_gravity_median[1], bno_gravity_median[2]);
+      //10Hz処理
+      digitalWrite(PWM_LED_RED, HIGH);  //赤LED点灯
+      medianfilter_10Hz_output(accel_data, bno_accel_median);
+      medianfilter_10Hz_output(orientation_data, bno_orient_median);
+      medianfilter_10Hz_output(velocity_data, bno_velocity_median);
+      medianfilter_10Hz_output(linearaccel_data, bno_linearaccel_median);
+      medianfilter_10Hz_output(magnetometer_data, bno_magnet_median);
+      medianfilter_10Hz_output(gravity_data, bno_gravity_median);
+      //CAN_to_device
+      CCP.fp16_to_device(CCP_A_accel_mss, bno_accel_median[0], bno_accel_median[1], bno_accel_median[2]);
+      CCP.fp16_to_device(CCP_A_gyro_rads, bno_orient_median[0], bno_orient_median[1], bno_orient_median[2]);
+      CCP.fp16_to_device(CCP_A_mag_uT, bno_velocity_median[0], bno_velocity_median[1], bno_velocity_median[2]);
+      CCP.fp16_to_device(CCP_A_euler_rad, bno_linearaccel_median[0], bno_linearaccel_median[1], bno_linearaccel_median[2]);
+      CCP.fp16_to_device(CCP_A_magnetic_Am, bno_magnet_median[0], bno_magnet_median[1], bno_magnet_median[2]);
+      CCP.fp16_to_device(CCP_A_gravity_mss, bno_gravity_median[0], bno_gravity_median[1], bno_gravity_median[2]);
+      digitalWrite(PWM_LED_RED, LOW);  //赤LED消灯
 
-        Serial.print("accel");
-        print_data(bno_accel_median);
-        Serial.print("orient");
-        print_data(bno_orient_median);
-        Serial.print("velocity");
-        print_data(bno_velocity_median);
-        Serial.print("linearaccel");
-        print_data(bno_linearaccel_median);
-        Serial.print("magnet");
-        print_data(bno_magnet_median);
-        Serial.print("gravity");
-        print_data(bno_gravity_median);
-        Serial.println("---------------------------------");
-      
+      pressure_median = findMedian(get_bme_pressure, 10);
+      temperature_median = findMedian(get_bme_temperature, 10);
+      altitude_median_2 = get_altitude(pressure_median, sealevelpressure, temperature_median);
+      altitude_median_1 = findMedian(get_bme_altitude, 10);
+      humidity_median = findMedian(get_bme_humidity, 10);
+      CCP.float_to_device(CCP_A_pressure_hPa, pressure_median);
+      CCP.float_to_device(CCP_A_temperature_C, temperature_median);
+      CCP.float_to_device(CCP_A_humidity_percent, humidity_median);
+      CCP.float_to_device(CCP_A_altitude_m, altitude_median_2);
 
-        pressure_median = findMedian(get_bme_pressure, 10);
-        temperature_median = findMedian(get_bme_temperature, 10);
-        altitude_median = findMedian(get_bme_altitude, 10);
-        humidity_median = findMedian(get_bme_humidity, 10);
-        CCP.float_to_device(CCP_A_pressure_hPa, pressure_median);
-        CCP.float_to_device(CCP_A_temperature_C, temperature_median);
-        CCP.float_to_device(CCP_A_humidity_percent, humidity_median);
-        CCP.float_to_device(CCP_A_altitude_m, altitude_median);
-        Serial.print("気圧：");
-        Serial.println(pressure_median);
-        Serial.print("気温：");
-        Serial.println(temperature_median);
-        Serial.print("高度：");
-        Serial.println(altitude_median);
-        // printValues();
-        // Serial.print("湿度：");
-        // Serial.println(humidity_median);
+      Serial.print("accel");
+      print_data(bno_accel_median);
+      Serial.print("orient");
+      print_data(bno_orient_median);
+      Serial.print("velocity");
+      print_data(bno_velocity_median);
+      Serial.print("linearaccel");
+      print_data(bno_linearaccel_median);
+      Serial.print("magnet");
+      print_data(bno_magnet_median);
+      Serial.print("gravity");
+      print_data(bno_gravity_median);
+
+      Serial.print("気圧：");
+      Serial.println(pressure_median);
+      Serial.print("気温：");
+      Serial.println(temperature_median);
+      Serial.println("---------------------------------");
+      Serial.print("高度2 , ");
+      Serial.println(altitude_median_2);
+      Serial.print("高度1 , ");
+      Serial.println(altitude_median_1);
+      // Serial.print("湿度：");
+      // Serial.println(humidity_median);
       count_10Hz = 0;
     }
   }
@@ -227,17 +223,6 @@ void medianfilter_10Hz_output(float dataholder[10][3], float datamedian[3]) {
 
 float findMedian(float arr[], int n) {
   // 一時的な配列をソート
-  sortArray(arr, n);
-
-  // 中央値を返す
-  if (n % 2 == 0) {
-    return (arr[n / 2 - 1] + arr[n / 2]) / 2.0;
-  } else {
-    return arr[n / 2];
-  }
-}
-
-void sortArray(float arr[], int n) {
   for (int i = 0; i < n - 1; i++) {
     for (int j = 0; j < n - i - 1; j++) {
       if (arr[j] > arr[j + 1]) {
@@ -248,7 +233,16 @@ void sortArray(float arr[], int n) {
       }
     }
   }
+
+  // 中央値を返す
+  if (n % 2 == 0) {
+    return (arr[n / 2 - 1] + arr[n / 2]) / 2.0;
+  } else {
+    return arr[n / 2];
+  }
 }
+
+
 
 //get_bno055data
 void printEvent(sensors_event_t *event, float dataholder[10][3], int count) {
@@ -289,4 +283,12 @@ void printEvent(sensors_event_t *event, float dataholder[10][3], int count) {
   dataholder[count][0] = x;
   dataholder[count][1] = y;
   dataholder[count][2] = z;
+}
+
+float get_altitude(float pressure_hPa, float SEALEVELPRESSURE_hPa, float temperature_c) {
+  float h, a, b;
+  a = pow((SEALEVELPRESSURE_hPa / pressure_hPa), (1.0 / 5.257)) - 1;
+  b = (temperature_c + 273.15);
+  h = ((a * b) / 0.0065);
+  return h;
 }
