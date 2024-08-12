@@ -1,8 +1,8 @@
 //閾値設定
-float Accel_out_threshold = 110.0;     //離床判定に用いるm/ss
-float Altitude_out_threshold = 0.8;    //離床判定に用いるm/s (誤差を|1.0|m/sで考慮)
-float accel_open_threshold = -110.0;   //開放判定に用いるm/ss
-float altitude_open_threshold = -0.8;  //開放判定に用いるm/s (誤差を|1.0|m/sで考慮)
+float Accel_out_threshold = 11.0;      //離床判定に用いるm/ss
+float Altitude_out_threshold = 0.6;    //離床判定に用いるm/s (誤差を|1.0|m/sで考慮)
+float accel_open_threshold = -11.0;    //開放判定に用いるm/ss
+float altitude_open_threshold = -0.6;  //開放判定に用いるm/s (誤差を|1.0|m/sで考慮)
 unsigned long maxaltime = 24000;       //頂点到達時間: 22.651s
 unsigned long mecotime = 10000;        //燃焼時間：6.41s
 
@@ -14,10 +14,12 @@ bool maxaltitude_data_judge_ms = false;  //頂点到達検知
 //global data
 unsigned long time_data_ms = 0;  //離床判定タイマー(燃焼終了検知)
 int nowphase = 0;                //now_state
-int pinState = 0;                //key
-float altitude_tmp_m = 0;        //高度データの一時保管
-float altitude_per_time = 0;     //単位時間当たりの高度
-float altitude_difference = 0;   //判定に用いるデータ格納(altitudedata_m-altitude_tmp_m)/0.01
+int pinState_key = 0;            //key
+int pinState_pwm_1 = 0;
+int pinState_pwm_2 = 0;
+float altitude_tmp_m = 0;       //高度データの一時保管
+float altitude_per_time = 0;    //単位時間当たりの高度
+float altitude_difference = 0;  //判定に用いるデータ格納(altitudedata_m-altitude_tmp_m)/0.01
 
 //データ格納変数
 float acceldata_mss = 0;
@@ -54,7 +56,8 @@ uint8_t downlink_open_accel = 0;
 uint8_t downlink_open_altitude = 0;
 uint8_t downlink_meco_time = 0;
 uint8_t downlink_top_time = 0;
-
+uint8_t downlink_pwm_1 = 0;
+uint8_t downlink_pwm_2 = 0;
 //LED
 #define PWM_LED_RED 20   //GPIO20を使用する
 #define PWM_LED_BLUE 21  //GPIO21を使用する
@@ -75,7 +78,7 @@ CCP_MCP2515 CCP(CAN0_CS, CAN0_INT);
 void setup() {
   Serial.begin(115200);
   //key
-  pinMode(4, INPUT_PULLUP);  // GPIO4ピンをプルアップ付き入力として設定
+  pinMode(28, INPUT_PULLUP);  // GPIO4ピンをプルアップ付き入力として設定
   //LED
   pinMode(PWM_LED_RED, OUTPUT);
   pinMode(PWM_LED_BLUE, OUTPUT);
@@ -96,31 +99,7 @@ void loop() {
     count_10Hz++;  //100Hz処理されたときに+1
     if (count_10Hz > 10) {
       //10Hz
-      count_10Hz = 0;
-      count++;
-      if (count > 10) {
-        //1Hz
-        //テレメトリ送信
-        Serial.print("downlink:");
-        Serial.print(downlink_emst);
-        Serial.print(downlink_key);
-        Serial.print(downlink_STM_1);
-        Serial.print(downlink_STM_2);
-        Serial.print(downlink_outground_accel);
-        Serial.print(downlink_outground_altitude);
-        Serial.print(downlink_meco_time);
-        Serial.print(downlink_top_time);
-        Serial.print(downlink_open_accel);
-        Serial.println(downlink_open_altitude);
-        count = 0;
-        //数値デバック
-        // Serial.println(altitudedata_m);
-        // Serial.println(acceldata_mss);
-      }
-    }
-
-    //100Hzで実行する処理
-    //テレメトリ送信
+      //テレメトリ送信
     Serial.print("downlink:");
     Serial.print(downlink_emst);
     Serial.print(downlink_key);
@@ -131,7 +110,51 @@ void loop() {
     Serial.print(downlink_meco_time);
     Serial.print(downlink_top_time);
     Serial.print(downlink_open_accel);
-    Serial.println(downlink_open_altitude);
+    Serial.print(downlink_open_altitude);
+    Serial.print(downlink_pwm_1);
+    Serial.println(downlink_pwm_2);
+      count_10Hz = 0;
+      count++;
+      if (count > 10) {
+        //1Hz
+        //テレメトリ送信
+        // digitalWrite(PWM_LED_RED, HIGH);  //赤LED点灯
+        // Serial.print("downlink:");
+        // Serial.print(downlink_emst);
+        // Serial.print(downlink_key);
+        // Serial.print(downlink_STM_1);
+        // Serial.print(downlink_STM_2);
+        // Serial.print(downlink_outground_accel);
+        // Serial.print(downlink_outground_altitude);
+        // Serial.print(downlink_meco_time);
+        // Serial.print(downlink_top_time);
+        // Serial.print(downlink_open_accel);
+        // Serial.println(downlink_open_altitude);
+        // Serial.println(downlink_pwm_1);
+        // Serial.println(downlink_pwm_2);
+        digitalWrite(PWM_LED_RED, LOW);  //赤LED消灯
+        count = 0;
+        //数値デバック
+        // Serial.println(altitudedata_m);
+        // Serial.println(acceldata_mss);
+      }
+    }
+
+    //100Hzで実行する処理
+    // //テレメトリ送信
+    // Serial.print("downlink:");
+    // Serial.print(downlink_emst);
+    // Serial.print(downlink_key);
+    // Serial.print(downlink_STM_1);
+    // Serial.print(downlink_STM_2);
+    // Serial.print(downlink_outground_accel);
+    // Serial.print(downlink_outground_altitude);
+    // Serial.print(downlink_meco_time);
+    // Serial.print(downlink_top_time);
+    // Serial.print(downlink_open_accel);
+    // Serial.print(downlink_open_altitude);
+    // Serial.print(downlink_pwm_1);
+    // Serial.println(downlink_pwm_2);
 
 
     CCP.read_device();
@@ -144,6 +167,7 @@ void loop() {
         break;
       case CCP_A_accel_mss:
         acceldata_mss = CCP.data_fp16_2();  //加速度のZ軸方向の値を代入
+        // Serial.println(acceldata_mss);
         break;
       case CCP_A_altitude_m:
         altitude_tmp_m = altitudedata_m;
@@ -159,31 +183,58 @@ void loop() {
     }
   }
   if (nowphase == 0) {
-    pinState = digitalRead(4);  // GPIO4ピンの状態を読み取る
-    if (pinState = LOW) downlink_key = 1;
-    if ((pinState == LOW) || (ready_judge)) {
-      nowphase = 1;
+    if ((pinState_key == LOW) && (ready_judge)) {
+      goREADY();
       CCP.string_to_device(CCP_opener_state, (char*)"READY");
-    } 
-  }else if(nowphase==1){
-    if((pinState == HIGH) && (!ready_judge)){
-      nowphase = 0;
+    }
+  } else if (nowphase == 1) {
+    if ((pinState_key == HIGH) || (!ready_judge)) {
       goCHECK();
       CCP.string_to_device(CCP_opener_state, (char*)"CHECK");
     }
   }
   //key
-  if (downlink_key == 1) {
-    pinState = digitalRead(4);  // GPIO4ピンの状態を読み取る
-    if (pinState == HIGH) {
-      goCHECK();
-      ready_judge = false;
+  pinState_key = digitalRead(28);  // GPIO4ピンの状態を読み取る
+  if (downlink_key == 0) {
+    if (pinState_key == LOW) {
+      downlink_key = 1;
+    }
+  } else if (downlink_key == 1) {
+    if (pinState_key == HIGH) {
       downlink_key = 0;
+      goCHECK();
     }
   }
-
+  //servo_1
+  pinState_pwm_1 = digitalRead(PWM_SERVO_1);
+  switch (downlink_pwm_1) {
+    case 0:
+      if (pinState_pwm_1 == HIGH) {
+        downlink_pwm_1 = 1;
+      }
+      break;
+    case 1:
+      if (pinState_pwm_1 == LOW) {
+        downlink_pwm_1 = 0;
+      }
+      break;
+  }
+  //servo_2
+  pinState_pwm_2 = digitalRead(PWM_SERVO_2);
+  switch (downlink_pwm_2) {
+    case 0:
+      if (pinState_pwm_2 == HIGH) {
+        downlink_pwm_2 = 1;
+      }
+      break;
+    case 1:
+      if (pinState_pwm_2 == LOW) {
+        downlink_pwm_2 = 0;
+      }
+      break;
+  }
   //常に実行する処理
-  //(R-F)加速度による離床判定
+  //(R-F)加速度による離床判定altitude
   if ((acceldata_mss > Accel_out_threshold) && (!acceljudge_ground) && (nowphase >= 1)) {  //加速度による判定なし，READY以降が最低条件
     accel_ground_count++;
     // Serial.println(accel_ground_count);
@@ -229,7 +280,7 @@ void loop() {
   } else {
     altitude_open_count = 0;
   }
-  
+
   switch (nowphase) {
     case 0:
       break;
@@ -252,13 +303,15 @@ void loop() {
         open_accel_time = true;
         // Serial.println("--------燃焼終了と加速度検知------");
       }
-      if (((maxaltitude_data_judge_ms) || (altitudejudge_open)) && (!open_altitude_time)) {
+      if (((maxaltitude_data_judge_ms) && (altitudejudge_open)) && (!open_altitude_time)) {
         open_altitude_time = true;
         // Serial.println("--------頂点到達と高度検知------");
       }
       if ((open_altitude_time) && (open_accel_time) && (emst)) {
         // Serial.println("--------servo_power_ON,OPENED--------------------");
         nowphase = 3;
+        digitalWrite(PWM_SERVO_1, HIGH);  //servo1_open
+        digitalWrite(PWM_SERVO_2, HIGH);  //servo2_open
         CCP.string_to_device(CCP_opener_state, (char*)"OPENED");
       }
       break;
@@ -271,6 +324,7 @@ void loop() {
   } else {
     downlink_emst = 0;
   }
+
   switch (nowphase) {
     case 0:
       downlink_STM_1 = 0;
@@ -311,8 +365,14 @@ void loop() {
       goREADY();
     } else if (input == "EMST") {
       emst = false;
-    } else if (input == "OPEN") {
+    } else if (input == "CANCEL") {
       emst = true;
+    } else if (input == "OPEN") {
+      digitalWrite(PWM_SERVO_1, HIGH);  //servo1_open
+      digitalWrite(PWM_SERVO_2, HIGH);  //servo2_open
+    } else if (input == "CLOSE") {
+      digitalWrite(PWM_SERVO_1, LOW);  //servo1_close
+      digitalWrite(PWM_SERVO_2, LOW);  //servo2_close
     } else {
       Serial.println("Unknown command");  // 不明なコマンドの場合のデバッグメッセージ
     }
@@ -346,6 +406,8 @@ void reset() {
   mecotime_data_judge_ms = false;     //燃焼終了検知
   maxaltitude_data_judge_ms = false;  //頂点到達検知
   time_data_ms = 0;                   //離床判定タイマー(燃焼終了検知)
+  digitalWrite(PWM_SERVO_1, LOW);     //servo1_close
+  digitalWrite(PWM_SERVO_2, LOW);     //servo2_close
   //テレメトリ
   downlink_STM_1 = 0;  //state transition model
   downlink_STM_2 = 0;
@@ -355,5 +417,7 @@ void reset() {
   downlink_outground_altitude = 0;
   downlink_meco_time = 0;
   downlink_top_time = 0;
+  downlink_pwm_1 = 0;
+  downlink_pwm_2 = 0;
   CCP.string_to_device(CCP_lift_off_judge, const_cast<char*>("reset--OK"));
 }
