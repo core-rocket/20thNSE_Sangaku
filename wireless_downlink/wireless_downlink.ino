@@ -42,7 +42,7 @@ void setup() {
   TimerTcc0.attachInterrupt(TimerIsr);
 
   // ダウンリンク用タイマー
-  TimerTc3.initialize(1000000);
+  TimerTc3.initialize(5000000);
   TimerTc3.attachInterrupt(TimerCnt);
 
   delay(100);
@@ -54,15 +54,14 @@ void loop() {
   if (!digitalRead(CAN0_INT))  // データ受信確認
   {
     CCP.read_device();
-    switch (CCP.id) {]
+    switch (CCP.id) {
       case CCP_parachute_fuse:
         if (CCP.str_match("NOTOPEN", 7)) {
-        downlink_emst = 1;
-      }
-      else if (CCP.str_match("CLEAR", 5)) {
-        downlink_emst = 0;
-      }
-      break;
+          downlink_emst = 1;
+        } else if (CCP.str_match("CLEAR", 5)) {
+          downlink_emst = 0;
+        }
+        break;
       case CCP_key_state:
         if (CCP.str_match("ON", 2)) {
           downlink_key = 1;
@@ -95,42 +94,41 @@ void loop() {
           downlink_outground_altitude = 0;
         }
         break;
-      case CCP_lift_off_judge:
-        if (CCP.str_match("ACCSEN", 6)) {
-          downlink_meco_time = 1;
-        }
-        break;
-      case CCP_lift_off_judge:
-        if (CCP.str_match("ACCSEN", 6)) {
-          downlink_top_time = 1;
-        }
-        break;
-      case CCP_lift_off_judge:
-        if (CCP.str_match("ACCSEN", 6)) {
-          downlink_open_accel = 1;
-        } 
-        break;
-      case CCP_lift_off_judge:
-        if (CCP.str_match("ACCSEN", 6)) {
-          downlink_open_altitude = 1;
-        } 
-        break;
       default:
         break;
     }
   }
 
-  //Downlink
-  //テレメトリ送信
-  Serial1.print("downlink:");
-  Serial1.print(downlink_emst);
-  Serial1.print(downlink_key);
-  Serial1.print(downlink_STM_1);
-  Serial1.print(downlink_STM_2);
-  Serial1.print(downlink_outground_accel);
-  Serial1.print(downlink_outground_altitude);
-  Serial1.print(downlink_meco_time);
-  Serial1.print(downlink_top_time);
-  Serial1.print(downlink_open_accel);
-  Serial1.println(downlink_open_altitude);
+
+  if (is1hz) {
+    is1hz = false;
+    //Downlink
+    //テレメトリ送信
+    Serial1.print("downlink:");
+    Serial1.print(downlink_emst);
+    Serial1.print(downlink_key);
+    Serial1.print(downlink_STM_1);
+    Serial1.print(downlink_STM_2);
+    Serial1.print(downlink_outground_accel);
+    Serial1.print(downlink_outground_altitude);
+    Serial1.print(downlink_meco_time);
+    Serial1.print(downlink_top_time);
+    Serial1.print(downlink_open_accel);
+    Serial1.println(downlink_open_altitude);
+  }
+}
+
+
+void TimerIsr() {
+  if (is100hz) {
+    Serial.println("overrun");
+  }
+  is100hz = true;
+}
+
+void TimerCnt() {
+  if (is1hz) {
+    Serial.println("overrun10hz");
+  }
+  is1hz = true;
 }

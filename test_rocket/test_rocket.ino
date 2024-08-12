@@ -28,7 +28,7 @@ void loop() {
 
   Serial1.println(downlink);
   Serial.println(downlink);
-  delay(3000);
+  delay(1000);
   // if (is1hz) {
   //   is1hz = false;
   //   Serial1.println(downlink);
