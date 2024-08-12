@@ -5,8 +5,8 @@
 #include <utility/imumaths.h>
 #include <Adafruit_BME280.h>
 
-// #define Wire_SDA 6
-// #define Wire_SCL 7
+#define Wire_SDA 6
+#define Wire_SCL 7
 #define PWM_LED_RED 20   //値取得・送信確認用&エラー確認用
 #define PWM_LED_BLUE 21  //エラー確認用
 
@@ -64,6 +64,7 @@ int count_10Hz = 0;
 
 void setup(void) {
   Serial.begin(115200);
+  Wire.setPins(Wire_SDA, Wire_SCL);
   Wire.begin();
   CCP.begin();
   pinMode(PWM_LED_RED, OUTPUT);
@@ -169,7 +170,7 @@ void loop(void) {
       CCP.float_to_device(CCP_A_pressure_hPa, pressure_median);
       CCP.float_to_device(CCP_A_temperature_C, temperature_median);
       CCP.float_to_device(CCP_A_humidity_percent, humidity_median);
-      CCP.float_to_device(CCP_A_altitude_m, altitude_median_2);
+      CCP.float_to_device(CCP_A_altitude_m, difference_1);
 
       Serial.print("accel");
       print_data(bno_accel_median);
