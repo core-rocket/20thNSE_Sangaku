@@ -5,8 +5,8 @@
 #include <utility/imumaths.h>
 #include <Adafruit_BME280.h>
 
-#define Wire_SDA 6
-#define Wire_SCL 7
+// #define Wire_SDA 6
+// #define Wire_SCL 7
 #define PWM_LED_RED 20   //値取得・送信確認用&エラー確認用
 #define PWM_LED_BLUE 21  //エラー確認用
 
@@ -45,6 +45,9 @@ Adafruit_Sensor *bme_pressure = bme.getPressureSensor();
 Adafruit_Sensor *bme_humidity = bme.getHumiditySensor();
 #define SEALEVELPRESSURE_HPA (1013.25)
 float sealevelpressure = 1013.25;
+float tmp=0;
+float difference_1;
+float difference_2;
 float get_bme_pressure[10];
 float get_bme_temperature[10];
 float get_bme_altitude[10];
@@ -61,7 +64,6 @@ int count_10Hz = 0;
 
 void setup(void) {
   Serial.begin(115200);
-  Wire.setPins(Wire_SDA, Wire_SCL);
   Wire.begin();
   CCP.begin();
   pinMode(PWM_LED_RED, OUTPUT);
@@ -157,8 +159,12 @@ void loop(void) {
 
       pressure_median = findMedian(get_bme_pressure, 10);
       temperature_median = findMedian(get_bme_temperature, 10);
+      tmp=altitude_median_2;
       altitude_median_2 = get_altitude(pressure_median, sealevelpressure, temperature_median);
+      difference_2=altitude_median_2-tmp;
+      tmp=altitude_median_1;
       altitude_median_1 = findMedian(get_bme_altitude, 10);
+      difference_1=altitude_median_1-tmp;
       humidity_median = findMedian(get_bme_humidity, 10);
       CCP.float_to_device(CCP_A_pressure_hPa, pressure_median);
       CCP.float_to_device(CCP_A_temperature_C, temperature_median);
@@ -187,6 +193,10 @@ void loop(void) {
       Serial.println(altitude_median_2);
       Serial.print("高度1 , ");
       Serial.println(altitude_median_1);
+      Serial.print("差1");
+      Serial.println(difference_1);
+      Serial.print("差2");
+      Serial.println(difference_2);
       // Serial.print("湿度：");
       // Serial.println(humidity_median);
       count_10Hz = 0;
