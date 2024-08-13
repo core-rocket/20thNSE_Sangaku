@@ -12,8 +12,8 @@ MicroNMEA nmea(nmeaBuffer, sizeof(nmeaBuffer));
 #include <string.h>
 #include <CCP_MCP2515.h>
 
-#define CAN0_INT 1
-#define CAN0_CS 0
+#define CAN0_INT D1
+#define CAN0_CS D0
 
 CCP_MCP2515 CCP(CAN0_CS, CAN0_INT);
 
