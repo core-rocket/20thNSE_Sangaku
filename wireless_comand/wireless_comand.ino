@@ -9,7 +9,7 @@
 CCP_MCP2515 CCP(CAN0_CS, CAN0_INT);
 
 //デバッグ
-#define debug
+// #define debug
 
 void setup() {
   Serial.begin(115200);
@@ -20,14 +20,8 @@ void setup() {
   digitalWrite(CAN0_CS, HIGH);
   CCP.begin();
 
-  // CAN用タイマー
-  // TimerTcc0.initialize(10000);  // 10,000us=100Hz
-  // TimerTcc0.attachInterrupt(TimerIsr);
-
-  // ダウンリンク用タイマー
-  // TimerTc3.initialize(1000000);
-  // TimerTc3.attachInterrupt(TimerCnt);
 }
+
 
 void loop() {
   //　コマンド
@@ -35,44 +29,51 @@ void loop() {
     String inputString = Serial1.readStringUntil('\n');  // 受信した文字列を読み取る
     inputString.trim();                                  //前後の空白文字を削除する
     if (inputString == "N") {
-      CCP.string_to_device(CCP_parachute_fuse, "NOTOPEN");
+      CCP.string_to_device(CCP_parachute_fuse, const_cast<char*>("NOTOPEN"));
     } else if (inputString == "GO") {
-      CCP.string_to_device(CCP_parachute_fuse, "CLEAR");
+      CCP.string_to_device(CCP_parachute_fuse, const_cast<char*>("CLEAR"));
     } else if (inputString == "CHECK") {
-      CCP.string_to_device(CCP_opener_control, "CHECK");
+      CCP.string_to_device(CCP_opener_control, const_cast<char*>("CHECK"));
       Serial1.print("CHECK");
     } else if (inputString == "READY") {
-      CCP.string_to_device(CCP_opener_control, "READY");
+      CCP.string_to_device(CCP_opener_control, const_cast<char*>("READY"));
       Serial1.print("READY");
-    } else if (inputString == "CHECK") {
-      CCP.string_to_device(CCP_A_flash_control, "CHECK");
-      CCP.string_to_device(CCP_B_flash_control, "CHECK");
-      CCP.string_to_device(CCP_C_flash_control, "CHECK");
-    } else if (inputString == "START") {
-      CCP.string_to_device(CCP_A_flash_control, "START");
-      CCP.string_to_device(CCP_B_flash_control, "START");
-      CCP.string_to_device(CCP_C_flash_control, "START");
-    } else if (inputString == "STOP") {
-      CCP.string_to_device(CCP_A_flash_control, "STOP");
-      CCP.string_to_device(CCP_B_flash_control, "STOP");
-      CCP.string_to_device(CCP_C_flash_control, "STOP");
-    } else if (inputString == "CLEAR") {
-      CCP.string_to_device(CCP_A_flash_control, "CLEAR");
-      CCP.string_to_device(CCP_B_flash_control, "CLEAR");
-      CCP.string_to_device(CCP_C_flash_control, "CLEAR");
-    }
+    } 
+    //  else if (inputString == "CHECK") {
+    //   CCP.string_to_device(CCP_A_flash_control, "CHECK");
+    //   CCP.string_to_device(CCP_B_flash_control, "CHECK");
+    //   CCP.string_to_device(CCP_C_flash_control, "CHECK");
+    // } else if (inputString == "START") {
+    //   CCP.string_to_device(CCP_A_flash_control, "START");
+    //   CCP.string_to_device(CCP_B_flash_control, "START");
+    //   CCP.string_to_device(CCP_C_flash_control, "START");
+    // } else if (inputString == "STOP") {
+    //   CCP.string_to_device(CCP_A_flash_control, "STOP");
+    //   CCP.string_to_device(CCP_B_flash_control, "STOP");
+    //   CCP.string_to_device(CCP_C_flash_control, "STOP");
+    // } else if (inputString == "CLEAR") {
+    //   CCP.string_to_device(CCP_A_flash_control, "CLEAR");
+    //   CCP.string_to_device(CCP_B_flash_control, "CLEAR");
+    //   CCP.string_to_device(CCP_C_flash_control, "CLEAR");
+    // }
   }
+
 
 #ifdef debug
   if (Serial1.available() > 0) {
     String inputString = Serial1.readStringUntil('\n');  // 受信した文字列を読み取る
     inputString.trim();                                  //前後の空白文字を削除する
     if (inputString == "OPEN") {
-      CCP.string_to_device(CCP_parachute_control, "OPEN");
+      CCP.string_to_device(CCP_parachute_control, const_cast<char*>("OPEN"));
       Serial.println("OPEN");
     } else if (inputString == "CLOSE") {
-      CCP.string_to_device(CCP_parachute_control, "CLOSE");
-      Serial.print("CLOSE");
+      byte sndStat = CCP.string_to_device(CCP_parachute_control, const_cast<char*>("CLOSE"));
+      if (sndStat == CAN_OK) {
+        Serial1.println("Message Sent Successfully!");
+      } else {
+        Serial1.println("Error Sending Message...");
+      }
+      Serial.println("CLOSE");
     }
   }
 #endif
