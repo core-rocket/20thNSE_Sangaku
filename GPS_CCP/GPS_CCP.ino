@@ -58,14 +58,14 @@ void loop() {
     Serial.print("Longitude (deg): ");
     Serial.println(longitude_mdeg / 1000000., 6);
 
-    byte sndStat1 = CCP.uint32_to_device(CCP_A_GNSS_latitude_udeg, nmea.getLatitude() / 1000000);
+    byte sndStat1 = CCP.uint32_to_device(CCP_A_GNSS_latitude_udeg, nmea.getLatitude() );
     if (sndStat1 == CAN_OK) {
       Serial.println("Message Sent Successfully!");
     } else {
       Serial.println("Error Sending Message...");
     }
 
-    byte sndStat2 = CCP.uint32_to_device(CCP_A_GNSS_longitude_udeg, nmea.getLongitude() / 1000000);
+    byte sndStat2 = CCP.uint32_to_device(CCP_A_GNSS_longitude_udeg, nmea.getLongitude() );
     if (sndStat2 == CAN_OK) {
       Serial.println("Message Sent Successfully!");
     } else {
