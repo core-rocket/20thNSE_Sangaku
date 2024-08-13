@@ -49,7 +49,7 @@ void setup() {
 void loop() {
   myGNSS.checkUblox();  //See if new data is available. Process bytes as they come in.
 
-  if (nmea.isValid() == true) {
+  // if (nmea.isValid() == true) {
     long latitude_mdeg = nmea.getLatitude();
     long longitude_mdeg = nmea.getLongitude();
 
@@ -58,13 +58,23 @@ void loop() {
     Serial.print("Longitude (deg): ");
     Serial.println(longitude_mdeg / 1000000., 6);
 
-    CCP.uint32_to_device(CCP_A_GNSS_latitude_udeg, nmea.getLatitude() / 1000000);
-    CCP.uint32_to_device(CCP_A_GNSS_longitude_udeg, nmea.getLongitude() / 1000000);
+    byte sndStat1 = CCP.uint32_to_device(CCP_A_GNSS_latitude_udeg, nmea.getLatitude() / 1000000);
+    if (sndStat1 == CAN_OK) {
+      Serial.println("Message Sent Successfully!");
+    } else {
+      Serial.println("Error Sending Message...");
+    }
 
+    byte sndStat2 = CCP.uint32_to_device(CCP_A_GNSS_longitude_udeg, nmea.getLongitude() / 1000000);
+    if (sndStat2 == CAN_OK) {
+      Serial.println("Message Sent Successfully!");
+    } else {
+      Serial.println("Error Sending Message...");
+    }
     nmea.clear();  // Clear the MicroNMEA storage to make sure we are getting fresh data
-  } else {
+  // } else {
     Serial.println("Waiting for fresh data");
-  }
+  // }
 
   if (!digitalRead(CAN0_INT))  // データ受信確認
   {
@@ -81,11 +91,11 @@ void loop() {
     }
   }
 
-  Serial.print(CCP_latitude);
-  Serial.print(",");
-  Serial.println(CCP_longitude);
+  // Serial.print(CCP_latitude);
+  // Serial.print(",");
+  // Serial.println(CCP_longitude);
 
-  delay(1000);  //Don't pound too hard on the I2C bus
+  delay(100);  //Don't pound too hard on the I2C bus
 }
 
 //This function gets called from the SparkFun u-blox Arduino Library
