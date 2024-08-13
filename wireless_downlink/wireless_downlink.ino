@@ -8,8 +8,10 @@
 CCP_MCP2515 CCP(CAN0_CS, CAN0_INT);
 
 //テレメトリー
-int downlink_binary = 0;
 int downlink = 0;
+
+const unsigned long interval = 1000;  // 処理の間隔を10ミリ秒（100Hz）に設定
+unsigned long previousMillis = 0;     // 前回の処理時間を保存する変数
 
 void setup() {
   // put your setup code here, to run once:
@@ -26,31 +28,30 @@ void setup() {
 }
 
 void loop() {
+  unsigned long currentMillis = millis();  // 現在の時間を取得
   // put your main code here, to run repeatedly:
   // 地上局へのテレメトリ
   if (!digitalRead(CAN0_INT))  // データ受信確認
   {
     CCP.read_device();
     switch (CCP.id) {
-      case CCP_downkink:
-        downlink_binary = CCP.data_uint32();
+      case CCP_downlink:
+        downlink = CCP.data_uint32();
         break;
       default:
         break;
     }
   }
 
+  Serial.print("downlink:");
+  Serial.println(downlink);
+  Serial.println(downlink, BIN);
 
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;  // 前回の処理時間を現在の時間に更新
 
-    downlink = bin_to_dec(downlink_binary);
     Serial1.print("downlink:");
-    Serial1.print(downlink);
+    Serial1.println(downlink);
+    Serial1.println(downlink, BIN);
   }
 }
-
-void bin_to_dec{
-
-}
-
