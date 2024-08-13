@@ -12,10 +12,13 @@ MicroNMEA nmea(nmeaBuffer, sizeof(nmeaBuffer));
 #include <string.h>
 #include <CCP_MCP2515.h>
 
-#define CAN0_INT 0
-#define CAN0_CS 1
+#define CAN0_INT 1
+#define CAN0_CS 0
 
 CCP_MCP2515 CCP(CAN0_CS, CAN0_INT);
+
+long CCP_latitude = 0;
+long CCP_longitude = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -62,6 +65,25 @@ void loop() {
   } else {
     Serial.println("Waiting for fresh data");
   }
+
+  if (!digitalRead(CAN0_INT))  // データ受信確認
+  {
+    CCP.read_device();
+    switch (CCP.id) {
+      case CCP_A_GNSS_latitude_udeg:
+        CCP_latitude = CCP.data_uint32();
+        break;
+      case CCP_A_GNSS_longitude_udeg:
+        CCP_longitude = CCP.data_uint32();
+        break;
+      default:
+        break;
+    }
+  }
+
+  Serial.print(CCP_latitude);
+  Serial.print(",");
+  Serial.println(CCP_longitude);
 
   delay(1000);  //Don't pound too hard on the I2C bus
 }
