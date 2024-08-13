@@ -40,8 +40,10 @@ void loop() {
       CCP.string_to_device(CCP_parachute_fuse, "CLEAR");
     } else if (inputString == "CHECK") {
       CCP.string_to_device(CCP_opener_control, "CHECK");
+      Serial1.print("CHECK");
     } else if (inputString == "READY") {
       CCP.string_to_device(CCP_opener_control, "READY");
+      Serial1.print("READY");
     } else if (inputString == "CHECK") {
       CCP.string_to_device(CCP_A_flash_control, "CHECK");
       CCP.string_to_device(CCP_B_flash_control, "CHECK");
