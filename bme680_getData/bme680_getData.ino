@@ -91,7 +91,7 @@ void loop() {
   CCP.float_to_device(CCP_nose_temperature_C, temperature_c);
   CCP.float_to_device(CCP_nose_humidity_percent, humidity_%);
   CCP.float_to_device(CCP_nose_altitude_m, altitude_m);
-  CCP.float_to_device(CCP_nose_altitude_m, gas_KOhms);
+  CCP.float_to_device(CCP_nose_gas_KOhms, gas_KOhms);
 
   Serial.println();
 }
