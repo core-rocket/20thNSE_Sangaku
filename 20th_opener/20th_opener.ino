@@ -65,6 +65,13 @@ uint16_t downlink_top_time = 0;
 uint16_t downlink_pwm_1 = 0;
 uint16_t downlink_pwm_2 = 0;
 
+//servo
+#include <Servo.h>
+Servo myservo1;
+Servo myservo2;
+const int SV_PIN_1 = D4;
+const int SV_PIN_2 = D5;
+
 //LED
 #define PWM_LED_RED 20   //GPIO20を使用する
 #define PWM_LED_BLUE 21  //GPIO21を使用する
@@ -77,9 +84,6 @@ uint16_t downlink_pwm_2 = 0;
 //specker
 int pinNo = 29;  // 9番ピン設定
 int i = 0;
-//servo
-#define PWM_SERVO_1 1  //GPIO5を使用する
-#define PWM_SERVO_2 0  //GPIO6を使用する
 
 //CAN
 #include <CCP_MCP2515.h>
@@ -99,8 +103,8 @@ void setup() {
   pinMode(RGB_LED_BLUE, OUTPUT);
   pinMode(RGB_LED_GREEN, OUTPUT);
   //servo
-  pinMode(PWM_SERVO_1, OUTPUT);
-  pinMode(PWM_SERVO_2, OUTPUT);
+  myservo1.attach(SV_PIN_1, 500, 2400);
+  myservo2.attach(SV_PIN_2, 500, 2400);
   //speacker
   pinMode(pinNo, OUTPUT);  // 9番ピンを出力設定
   //CAN
@@ -207,12 +211,12 @@ void loop() {
         if (CCP.str_match(const_cast<char*>("OPEN"), 4)) {
           downlink_pwm_1 = 1;
           downlink_pwm_2 = 1;
-          // digitalWrite(PWM_SERVO_1, HIGH);  //servo1_open
-          // digitalWrite(PWM_SERVO_2, HIGH);  //servo2_open;
+          myservo1.write(90);  // サーボモーター1を90度の位置まで動かす
+          myservo2.write(90);  // サーボモーター2を90度の位置まで動かす
         }
         if (CCP.str_match(const_cast<char*>("CLOSE"), 5)) {
-          // digitalWrite(PWM_SERVO_1, LOW);  //servo1_open
-          // digitalWrite(PWM_SERVO_2, LOW);  //servo2_open;
+          myservo1.write(180);  // サーボモーター1を180度の位置まで動かす
+          myservo2.write(0);    // サーボモーター2を0度の位置まで動かす
           downlink_pwm_1 = 0;
           downlink_pwm_2 = 0;
         }
@@ -243,34 +247,6 @@ void loop() {
       goCHECK();
     }
   }
-  // //servo_1
-  // pinState_pwm_1 = digitalRead(PWM_SERVO_1);
-  // switch (downlink_pwm_1) {
-  //   case 0:
-  //     if (pinState_pwm_1 == HIGH) {
-  //       downlink_pwm_1 = 1;
-  //     }
-  //     break;
-  //   case 1:
-  //     if (pinState_pwm_1 == LOW) {
-  //       downlink_pwm_1 = 0;
-  //     }
-  //     break;
-  // }
-  // //servo_2
-  // pinState_pwm_2 = digitalRead(PWM_SERVO_2);
-  // switch (downlink_pwm_2) {
-  //   case 0:
-  //     if (pinState_pwm_2 == HIGH) {
-  //       downlink_pwm_2 = 1;
-  //     }
-  //     break;
-  //   case 1:
-  //     if (pinState_pwm_2 == LOW) {
-  //       downlink_pwm_2 = 0;
-  //     }
-  //     break;
-  // }
   //常に実行する処理
   //(R-F)加速度による離床判定altitude
   if ((acceldata_mss > Accel_out_threshold) && (!acceljudge_ground) && (nowphase >= 1)) {  //加速度による判定なし，READY以降が最低条件
@@ -348,8 +324,10 @@ void loop() {
       if ((open_altitude_time) && (open_accel_time) && (emst)) {
         // Serial.println("--------servo_power_ON,OPENED--------------------");
         nowphase = 3;
-        digitalWrite(PWM_SERVO_1, HIGH);  //servo1_open
-        digitalWrite(PWM_SERVO_2, HIGH);  //servo2_open
+        myservo1.write(90);  // サーボモーター1を90度の位置まで動かす
+        myservo2.write(90);  // サーボモーター2を90度の位置まで動かす
+        downlink_pwm_1 = 1;
+        downlink_pwm_2 = 1;
         CCP.string_to_device(CCP_opener_state, (char*)"OPENED");
       }
       break;
@@ -408,12 +386,16 @@ void loop() {
     } else if (input == "CANCEL") {
       emst = true;
     } else if (input == "OPEN") {
-      digitalWrite(PWM_SERVO_1, HIGH);  //servo1_open
-      digitalWrite(PWM_SERVO_2, HIGH);  //servo2_open
+      downlink_pwm_1 = 1;
+      downlink_pwm_2 = 1;
+      myservo1.write(90);  // サーボモーター1を90度の位置まで動かす
+      myservo2.write(90);  // サーボモーター2を90度の位置まで動かす
       digitalWrite(RGB_LED_BLUE, HIGH);
     } else if (input == "CLOSE") {
-      digitalWrite(PWM_SERVO_1, LOW);  //servo1_close
-      digitalWrite(PWM_SERVO_2, LOW);  //servo2_close
+      downlink_pwm_1 = 0;
+      downlink_pwm_2 = 0;
+      myservo1.write(180);  // サーボモーター1を180度の位置まで動かす
+      myservo2.write(0);    // サーボモーター2を0度の位置まで動かす
       digitalWrite(RGB_LED_BLUE, LOW);
     } else {
       Serial.println("Unknown command");  // 不明なコマンドの場合のデバッグメッセージ
@@ -450,8 +432,6 @@ void reset() {
   mecotime_data_judge_ms = false;     //燃焼終了検知
   maxaltitude_data_judge_ms = false;  //頂点到達検知
   time_data_ms = 0;                   //離床判定タイマー(燃焼終了検知)
-  digitalWrite(PWM_SERVO_1, LOW);     //servo1_close
-  digitalWrite(PWM_SERVO_2, LOW);     //servo2_close
   //テレメトリ
   downlink_STM_1 = 0;  //state transition model
   downlink_STM_2 = 0;
