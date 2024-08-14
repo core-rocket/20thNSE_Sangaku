@@ -20,6 +20,13 @@
 #include <Adafruit_Sensor.h>
 #include "Adafruit_BME680.h"
 
+#include <CCP_MCP2515.h>
+#define CAN0_INT D1
+#define CAN0_CS D0
+
+// CAN
+CCP_MCP2515 CCP(CAN0_CS, CAN0_INT);
+
 #define BME_SCK 13
 #define BME_MISO 12
 #define BME_MOSI 11
@@ -27,7 +34,7 @@
 
 float altitude_m = 0;
 float temperature_c = 0;
-float humidity_%= 0;
+float humidity_per= 0;
 float pressure_hPa = 0;
 float gas_KOhms=0;
 
@@ -39,6 +46,8 @@ Adafruit_BME680 bme;  // I2C
 
 void setup() {
   Serial.begin(115200);
+  // CAN
+  CCP.begin();
   Wire.begin();
   while (!Serial)
     ;
@@ -63,7 +72,7 @@ void loop() {
     return;
   }
   Serial.print("Temperature = ");
-  temperature_c = bme.temperarure;
+  temperature_c = bme.temperature;
   Serial.print(temperature_c);
   Serial.println(" *C");
 
@@ -73,8 +82,8 @@ void loop() {
   Serial.println(" hPa");
 
   Serial.print("Humidity = ");
-  humidity_%= bme.humidity;
-  Serial.print(humidity_%);
+ humidity_per= bme.humidity;
+  Serial.print(humidity_per);
   Serial.println(" %");
 
   Serial.print("Gas = ");
@@ -89,7 +98,7 @@ void loop() {
 
   CCP.float_to_device(CCP_nose_pressure_hPa, pressure_hPa);
   CCP.float_to_device(CCP_nose_temperature_C, temperature_c);
-  CCP.float_to_device(CCP_nose_humidity_percent, humidity_%);
+  CCP.float_to_device(CCP_nose_humidity_percent, humidity_per);
   CCP.float_to_device(CCP_nose_altitude_m, altitude_m);
   CCP.float_to_device(CCP_nose_gas_KOhms, gas_KOhms);
 
