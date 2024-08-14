@@ -95,9 +95,9 @@ void setup() {
   //LED
   pinMode(PWM_LED_RED, OUTPUT);
   pinMode(PWM_LED_BLUE, OUTPUT);
-  pinMode(RGB_LED_RED,OUTPUT);
-  pinMode(RGB_LED_BLUE,OUTPUT);
-  pinMode(RGB_LED_GREEN,OUTPUT);
+  pinMode(RGB_LED_RED, OUTPUT);
+  pinMode(RGB_LED_BLUE, OUTPUT);
+  pinMode(RGB_LED_GREEN, OUTPUT);
   //servo
   pinMode(PWM_SERVO_1, OUTPUT);
   pinMode(PWM_SERVO_2, OUTPUT);
@@ -152,6 +152,7 @@ void loop() {
       downlink = (damy << 12) | (downlink_emst << 11) | (downlink_key << 10) | (downlink_STM_1 << 9) | (downlink_STM_2 << 8) | (downlink_outground_accel << 7) | (downlink_outground_altitude << 6) | (downlink_meco_time << 5) | (downlink_top_time << 4) | (downlink_open_accel << 3) | (downlink_open_altitude << 2) | (downlink_pwm_1 << 1) | (downlink_pwm_2 << 0);
       Serial.println(downlink);
       digitalWrite(PWM_LED_RED, HIGH);  //赤LED点灯
+      Serial.println(downlink, BIN);
       CCP.uint32_to_device(CCP_downlink, downlink);
       digitalWrite(PWM_LED_RED, LOW);  //赤LED消灯
       count_10Hz = 0;
@@ -188,8 +189,6 @@ void loop() {
       case CCP_opener_control:
         if (CCP.str_match(const_cast<char*>("CHECK"), 5)) goCHECK();
         if (CCP.str_match(const_cast<char*>("READY"), 5)) goREADY();
-        if (CCP.str_match(const_cast<char*>("EMST"), 4)) emst = false;
-        downlink_emst = 1;
         break;
       case CCP_A_accel_mss:
         acceldata_mss = CCP.data_fp16_2();  //加速度のZ軸方向の値を代入
@@ -203,8 +202,21 @@ void loop() {
         // Serial.println(altitude_difference);
         break;
       case CCP_parachute_fuse:
-        if (CCP.str_match(const_cast<char*>("NOTOPEN"), 7)) emst = false;
+        if (CCP.str_match(const_cast<char*>("EMST"), 4)) emst = false;
         if (CCP.str_match(const_cast<char*>("CLEAR"), 5)) emst = true;
+        if (CCP.str_match(const_cast<char*>("OPEN"), 4)) {
+          downlink_pwm_1 = 1;
+          downlink_pwm_2 = 1;
+          // digitalWrite(PWM_SERVO_1, HIGH);  //servo1_open
+          // digitalWrite(PWM_SERVO_2, HIGH);  //servo2_open;
+        }
+        if (CCP.str_match(const_cast<char*>("CLOSE"), 5)) {
+          // digitalWrite(PWM_SERVO_1, LOW);  //servo1_open
+          // digitalWrite(PWM_SERVO_2, LOW);  //servo2_open;
+          downlink_pwm_1 = 0;
+          downlink_pwm_2 = 0;
+        }
+
         break;
     }
   }
@@ -231,34 +243,34 @@ void loop() {
       goCHECK();
     }
   }
-  //servo_1
-  pinState_pwm_1 = digitalRead(PWM_SERVO_1);
-  switch (downlink_pwm_1) {
-    case 0:
-      if (pinState_pwm_1 == HIGH) {
-        downlink_pwm_1 = 1;
-      }
-      break;
-    case 1:
-      if (pinState_pwm_1 == LOW) {
-        downlink_pwm_1 = 0;
-      }
-      break;
-  }
-  //servo_2
-  pinState_pwm_2 = digitalRead(PWM_SERVO_2);
-  switch (downlink_pwm_2) {
-    case 0:
-      if (pinState_pwm_2 == HIGH) {
-        downlink_pwm_2 = 1;
-      }
-      break;
-    case 1:
-      if (pinState_pwm_2 == LOW) {
-        downlink_pwm_2 = 0;
-      }
-      break;
-  }
+  // //servo_1
+  // pinState_pwm_1 = digitalRead(PWM_SERVO_1);
+  // switch (downlink_pwm_1) {
+  //   case 0:
+  //     if (pinState_pwm_1 == HIGH) {
+  //       downlink_pwm_1 = 1;
+  //     }
+  //     break;
+  //   case 1:
+  //     if (pinState_pwm_1 == LOW) {
+  //       downlink_pwm_1 = 0;
+  //     }
+  //     break;
+  // }
+  // //servo_2
+  // pinState_pwm_2 = digitalRead(PWM_SERVO_2);
+  // switch (downlink_pwm_2) {
+  //   case 0:
+  //     if (pinState_pwm_2 == HIGH) {
+  //       downlink_pwm_2 = 1;
+  //     }
+  //     break;
+  //   case 1:
+  //     if (pinState_pwm_2 == LOW) {
+  //       downlink_pwm_2 = 0;
+  //     }
+  //     break;
+  // }
   //常に実行する処理
   //(R-F)加速度による離床判定altitude
   if ((acceldata_mss > Accel_out_threshold) && (!acceljudge_ground) && (nowphase >= 1)) {  //加速度による判定なし，READY以降が最低条件
@@ -347,10 +359,10 @@ void loop() {
   //ダウンリンク
   if (!emst) {
     downlink_emst = 1;  //開放禁止コマンド
-    digitalWrite(RGB_LED_RED,HIGH);
+    digitalWrite(RGB_LED_RED, HIGH);
   } else {
     downlink_emst = 0;
-    digitalWrite(RGB_LED_RED,LOW);
+    digitalWrite(RGB_LED_RED, LOW);
   }
 
   switch (nowphase) {
@@ -398,11 +410,11 @@ void loop() {
     } else if (input == "OPEN") {
       digitalWrite(PWM_SERVO_1, HIGH);  //servo1_open
       digitalWrite(PWM_SERVO_2, HIGH);  //servo2_open
-      digitalWrite(RGB_LED_BLUE,HIGH);
+      digitalWrite(RGB_LED_BLUE, HIGH);
     } else if (input == "CLOSE") {
       digitalWrite(PWM_SERVO_1, LOW);  //servo1_close
       digitalWrite(PWM_SERVO_2, LOW);  //servo2_close
-      digitalWrite(RGB_LED_BLUE,LOW);
+      digitalWrite(RGB_LED_BLUE, LOW);
     } else {
       Serial.println("Unknown command");  // 不明なコマンドの場合のデバッグメッセージ
     }
