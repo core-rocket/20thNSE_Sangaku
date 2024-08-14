@@ -6,7 +6,7 @@ void setup() {
 }
 
 void loop() {
-  if (Serial1.available()) {
+  if (Serial1.available()>0) {
     String inputString = Serial1.readStringUntil('\n');  // 受信した文字列を読み取ります
     inputString.trim();
     Serial.println(inputString);
