@@ -1,4 +1,5 @@
-//閾値設定
+//// loop()と，ここから呼び出される関数ではdelay()使用禁止
+// 閾値設定
 float Accel_out_threshold = 11.0;      //離床判定に用いるm/ss
 float Altitude_out_threshold = 0.6;    //離床判定に用いるm/s (誤差を|1.0|m/sで考慮)
 float accel_open_threshold = -11.0;    //開放判定に用いるm/ss
@@ -34,10 +35,13 @@ bool open_accel_time = false;       //加速度検知と燃焼終了
 bool open_altitude_time = false;    //高度検知or頂点到達
 //global
 unsigned long time_100Hz = 0;  //100Hz
-int count_10Hz = 0;            //10Hz
-int count = 0;                 //1Hz処理を行うために用いる
-int accel_ground_count = 0;    //加速度が閾値の条件を満たす回数をカウント
-int altitude_open_count = 0;   //高度が閾値の条件を満たす回数をカウント
+unsigned long time_speaker = 0;
+unsigned long time_speaker_interbal = 0;
+int count_speacker = 0;
+int count_10Hz = 0;           //10Hz
+int count = 0;                //1Hz処理を行うために用いる
+int accel_ground_count = 0;   //加速度が閾値の条件を満たす回数をカウント
+int altitude_open_count = 0;  //高度が閾値の条件を満たす回数をカウント
 int altitude_count = 0;
 int altitude_ground_count = 0;
 int accel_open_count = 0;  //加速度が閾値の条件を満たす回数をカウント
@@ -46,27 +50,36 @@ void goREADY();
 
 //テレメトリー
 // uint16_t x = 0b0000000000000000;テレメトリのバイナリ化
-int downlink_key = 0;
-int downlink_emst = 0;
-int downlink_STM_1 = 0;  //state transition model
-int downlink_STM_2 = 0;
-uint8_t downlink_outground_accel = 0;
-uint8_t downlink_outground_altitude = 0;
-uint8_t downlink_open_accel = 0;
-uint8_t downlink_open_altitude = 0;
-uint8_t downlink_meco_time = 0;
-uint8_t downlink_top_time = 0;
-uint8_t downlink_pwm_1 = 0;
-uint8_t downlink_pwm_2 = 0;
+uint32_t downlink = 0;
+uint16_t damy = 1;
+uint16_t downlink_key = 0;
+uint16_t downlink_emst = 0;
+uint16_t downlink_STM_1 = 0;  //state transition model
+uint16_t downlink_STM_2 = 0;
+uint16_t downlink_outground_accel = 0;
+uint16_t downlink_outground_altitude = 0;
+uint16_t downlink_open_accel = 0;
+uint16_t downlink_open_altitude = 0;
+uint16_t downlink_meco_time = 0;
+uint16_t downlink_top_time = 0;
+uint16_t downlink_pwm_1 = 0;
+uint16_t downlink_pwm_2 = 0;
+
 //LED
 #define PWM_LED_RED 20   //GPIO20を使用する
 #define PWM_LED_BLUE 21  //GPIO21を使用する
+#define RGB_LED_RED 16
+#define RGB_LED_BLUE 17
+#define RGB_LED_GREEN 25
 // digitalWrite(PWM_LED_RED, HIGH);
 // digitalWrite(PWM_LED, LOW);
 
+//specker
+int pinNo = 29;  // 9番ピン設定
+int i = 0;
 //servo
-#define PWM_SERVO_1 7  //GPIO5を使用する
-#define PWM_SERVO_2 6  //GPIO6を使用する
+#define PWM_SERVO_1 1  //GPIO5を使用する
+#define PWM_SERVO_2 0  //GPIO6を使用する
 
 //CAN
 #include <CCP_MCP2515.h>
@@ -82,17 +95,40 @@ void setup() {
   //LED
   pinMode(PWM_LED_RED, OUTPUT);
   pinMode(PWM_LED_BLUE, OUTPUT);
+  pinMode(RGB_LED_RED,OUTPUT);
+  pinMode(RGB_LED_BLUE,OUTPUT);
+  pinMode(RGB_LED_GREEN,OUTPUT);
   //servo
   pinMode(PWM_SERVO_1, OUTPUT);
   pinMode(PWM_SERVO_2, OUTPUT);
+  //speacker
+  pinMode(pinNo, OUTPUT);  // 9番ピンを出力設定
   //CAN
   CCP.begin();
   // デバッグ出力
   Serial.println("Opener Start");
+  for (int i = 0; i < 1000; i++) {
+    digitalWrite(pinNo, HIGH);  // ブザーを鳴らす
+    delay(1);                   // 500ms停止
+    digitalWrite(pinNo, LOW);   // ブザーを止める
+    delay(1);                   // 1000停止
+  }
 }
 
-// loop()と，ここから呼び出される関数ではdelay()使用禁止
 void loop() {
+  if (millis() - time_speaker >= 0.8) {
+    if (i == 1) {
+      if (millis() - time_speaker < 3000) {
+        if (time_speaker_interbal == 0) {
+          digitalWrite(pinNo, HIGH);  // ブザーを鳴らす
+          time_speaker_interbal = 1;
+        } else if (time_speaker_interbal == 1) {
+          digitalWrite(pinNo, LOW);  // ブザーを止める
+          time_speaker_interbal = 0;
+        }
+      }
+    }
+  }
   if (millis() - time_100Hz >= 10) {
     //100Hz処理
     time_100Hz += 10;
@@ -100,39 +136,29 @@ void loop() {
     if (count_10Hz > 10) {
       //10Hz
       //テレメトリ送信
-    Serial.print("downlink:");
-    Serial.print(downlink_emst);
-    Serial.print(downlink_key);
-    Serial.print(downlink_STM_1);
-    Serial.print(downlink_STM_2);
-    Serial.print(downlink_outground_accel);
-    Serial.print(downlink_outground_altitude);
-    Serial.print(downlink_meco_time);
-    Serial.print(downlink_top_time);
-    Serial.print(downlink_open_accel);
-    Serial.print(downlink_open_altitude);
-    Serial.print(downlink_pwm_1);
-    Serial.println(downlink_pwm_2);
+      // Serial.print("downlink: ");
+      // Serial.print(downlink_emst);
+      // Serial.print(downlink_key);
+      // Serial.print(downlink_STM_1);
+      // Serial.print(downlink_STM_2);
+      // Serial.print(downlink_outground_accel);
+      // Serial.print(downlink_outground_altitude);
+      // Serial.print(downlink_meco_time);
+      // Serial.print(downlink_top_time);
+      // Serial.print(downlink_open_accel);
+      // Serial.print(downlink_open_altitude);
+      // Serial.print(downlink_pwm_1);
+      // Serial.println(downlink_pwm_2);
+      downlink = (damy << 12) | (downlink_emst << 11) | (downlink_key << 10) | (downlink_STM_1 << 9) | (downlink_STM_2 << 8) | (downlink_outground_accel << 7) | (downlink_outground_altitude << 6) | (downlink_meco_time << 5) | (downlink_top_time << 4) | (downlink_open_accel << 3) | (downlink_open_altitude << 2) | (downlink_pwm_1 << 1) | (downlink_pwm_2 << 0);
+      Serial.println(downlink);
+      digitalWrite(PWM_LED_RED, HIGH);  //赤LED点灯
+      CCP.uint32_to_device(CCP_downlink, downlink);
+      digitalWrite(PWM_LED_RED, LOW);  //赤LED消灯
       count_10Hz = 0;
       count++;
       if (count > 10) {
         //1Hz
-        //テレメトリ送信
-        // digitalWrite(PWM_LED_RED, HIGH);  //赤LED点灯
-        // Serial.print("downlink:");
-        // Serial.print(downlink_emst);
-        // Serial.print(downlink_key);
-        // Serial.print(downlink_STM_1);
-        // Serial.print(downlink_STM_2);
-        // Serial.print(downlink_outground_accel);
-        // Serial.print(downlink_outground_altitude);
-        // Serial.print(downlink_meco_time);
-        // Serial.print(downlink_top_time);
-        // Serial.print(downlink_open_accel);
-        // Serial.println(downlink_open_altitude);
-        // Serial.println(downlink_pwm_1);
-        // Serial.println(downlink_pwm_2);
-        digitalWrite(PWM_LED_RED, LOW);  //赤LED消灯
+        // CCP.uint32_to_device(CCP_downlink, downlink);
         count = 0;
         //数値デバック
         // Serial.println(altitudedata_m);
@@ -173,8 +199,8 @@ void loop() {
         altitude_tmp_m = altitudedata_m;
         altitudedata_m = CCP.data_float();  //高度の値を代入
         altitude_difference = (altitudedata_m - altitude_tmp_m);
-        Serial.print("高度差");  //debag
-        Serial.println(altitude_difference);
+        // Serial.print("高度差");  //debag
+        // Serial.println(altitude_difference);
         break;
       case CCP_parachute_fuse:
         if (CCP.str_match(const_cast<char*>("NOTOPEN"), 7)) emst = false;
@@ -321,8 +347,10 @@ void loop() {
   //ダウンリンク
   if (!emst) {
     downlink_emst = 1;  //開放禁止コマンド
+    digitalWrite(RGB_LED_RED,HIGH);
   } else {
     downlink_emst = 0;
+    digitalWrite(RGB_LED_RED,LOW);
   }
 
   switch (nowphase) {
@@ -370,9 +398,11 @@ void loop() {
     } else if (input == "OPEN") {
       digitalWrite(PWM_SERVO_1, HIGH);  //servo1_open
       digitalWrite(PWM_SERVO_2, HIGH);  //servo2_open
+      digitalWrite(RGB_LED_BLUE,HIGH);
     } else if (input == "CLOSE") {
       digitalWrite(PWM_SERVO_1, LOW);  //servo1_close
       digitalWrite(PWM_SERVO_2, LOW);  //servo2_close
+      digitalWrite(RGB_LED_BLUE,LOW);
     } else {
       Serial.println("Unknown command");  // 不明なコマンドの場合のデバッグメッセージ
     }
@@ -387,6 +417,8 @@ void goCHECK() {
 }
 void goREADY() {
   nowphase = 1;
+  time_speaker = millis();
+  i = 1;
   CCP.string_to_device(CCP_opener_state, const_cast<char*>("READY"));
   ready_judge = true;
   reset();
