@@ -9,7 +9,7 @@
 CCP_MCP2515 CCP(CAN0_CS, CAN0_INT);
 
 //デバッグ
-#define debug
+// #define debug
 
 void setup() {
   Serial.begin(115200);
@@ -46,6 +46,12 @@ void loop() {
       Serial.println("READY");
       // Serial1.println("return READY");
     } else if (inputString == "OK") {
+    } else if (inputString == "OPEN") {
+      CCP.string_to_device(CCP_parachute_control, const_cast<char*>("OPEN"));
+      Serial.println("OPEN");
+    } else if (inputString == "CLOSE") {
+      CCP.string_to_device(CCP_parachute_control, const_cast<char*>("CLOSE"));
+      Serial.println("CLOSE");
     } else {
       Serial.println("NG");
       // Serial1.println("return NG");
@@ -79,25 +85,10 @@ void loop() {
     String inputString = Serial1.readStringUntil('\n');  // 受信した文字列を読み取る
     inputString.trim();                                  //前後の空白文字を削除する
     if (inputString == "OPEN") {
-      byte sndStat1 = CCP.string_to_device(CCP_parachute_control, const_cast<char*>("OPEN"));
-      if (sndStat1 == CAN_OK) {
-        Serial.println("Message Sent Successfully!");
-        // Serial1.println("Message Sent Successfully!");
-      } else {
-        Serial.println("Error Sending Message...");
-        // Serial1.println("Error Sending Message...");
-      }
+      CCP.string_to_device(CCP_parachute_control, const_cast<char*>("OPEN"));
       Serial.println("OPEN");
     } else if (inputString == "CLOSE") {
-      byte sndStat = CCP.string_to_device(CCP_parachute_control, const_cast<char*>("CLOSE"));
-      if (sndStat == CAN_OK) {
-        Serial.println("Message Sent Successfully!");
-        // Serial1.println("Message Sent Successfully!");
-      } else {
-        Serial.println("Error Sending Message...");
-        // Serial1.println("Error Sending Message...");
-      }
-
+      CCP.string_to_device(CCP_parachute_control, const_cast<char*>("CLOSE"));
       Serial.println("CLOSE");
     }
   }
