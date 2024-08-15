@@ -50,8 +50,8 @@ void loop() {
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;  // 前回の処理時間を現在の時間に更新
 
-    Serial1.print("downlink:");
+    // Serial1.print("downlink:");
     Serial1.println(downlink);
-    Serial1.println(downlink, BIN);
+    // Serial1.println(downlink, BIN);
   }
 }
