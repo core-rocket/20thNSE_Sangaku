@@ -53,7 +53,7 @@ void loop() {
     comand.trim();
     if (comand = "active") {
       mode = ACTIVE;
-      Serial.println("AVTIVE MODE");
+      Serial.println("ACIVE MODE");
     } else if (comand = "clear") {
       mode = CLRING;
       Serial.println("CLR");
