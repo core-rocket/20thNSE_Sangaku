@@ -58,6 +58,7 @@ void loop() {
       mode = CLRING;
       Serial.println("CLR");
     }
+    comand = "";
   }
   if (CCP_flash.flash_addr >= 0x3FFFF00) {
     if (mode == ACTIVE) {
@@ -73,11 +74,11 @@ void loop() {
 
   if (digitalRead(CAN0_INT)) {
     CCP_flash.flash_buf();
-    Serial.println("Writing");
+    // Serial.println("Writing");
     if (mode == CLRING) {
       if (CCP_flash.IsBusy()) {
         digitalWrite(greenled, !digitalRead(greenled));
-        Serial.println("");
+        // Serial.println("");
         // delay(100);
       } else {
         digitalWrite(greenled, HIGH);
@@ -109,6 +110,9 @@ void loop() {
         CCP_flash.clear_flash(false);
         CCP_can.string_to_device(CCP_A_flash_state, const_cast<char*>("CLRING"));
         mode = CLRING;
+      }
+      if (mode == ACTIVE) {
+        CCP_flash.byte_to_device(CCP_can.id, CCP_can.msg.msg_byte);
       }
     }
   }
