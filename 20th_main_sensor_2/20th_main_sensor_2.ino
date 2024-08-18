@@ -64,6 +64,9 @@ int count_1Hz = 0;
 void setup(void) {
   Serial.begin(115200);
   Wire.begin();
+  pinMode(CAN0_CS, OUTPUT);  //0ピンをCAN通信の送信用に設定
+  pinMode(CAN0_INT, INPUT);  //1ピンをCAN通信の入力用に設定
+  digitalWrite(CAN0_CS, HIGH);
   CCP.begin();
   pinMode(PWM_LED_BLUE, OUTPUT);
   pinMode(PWM_LED_WHITE, OUTPUT);
