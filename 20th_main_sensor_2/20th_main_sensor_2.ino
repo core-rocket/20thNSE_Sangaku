@@ -179,10 +179,10 @@ void loop(void) {
       tmp = altitude_median;
 #endif
       altitude_median = findMedian(get_bme_altitude, 10);
-#ifdef
+#ifdef debug
       difference = altitude_median - tmp;
-      Serial.pritn("差, ");
-      Serial.pritnln(difference);
+      Serial.print("差, ");
+      Serial.println(difference);
 
       Serial.print("accel");
       print_data(bno_accel_median);
