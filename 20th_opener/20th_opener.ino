@@ -229,20 +229,6 @@ void loop() {
         if (CCP.str_match(const_cast<char*>("EMST"), 4)) emst = false;
         if (CCP.str_match(const_cast<char*>("CLEAR"), 5)) emst = true;
         break;
-      case CCP_parachute_control:
-        if (CCP.str_match(const_cast<char*>("OPEN"), 4)) {
-          downlink_pwm_1 = 1;
-          downlink_pwm_2 = 1;
-          myservo1.write(90);  // サーボモーター1を90度の位置まで動かす
-          myservo2.write(90);  // サーボモーター2を90度の位置まで動かす
-        }
-        if (CCP.str_match(const_cast<char*>("CLOSE"), 5)) {
-          myservo1.write(180);  // サーボモーター1を180度の位置まで動かす
-          myservo2.write(0);    // サーボモーター2を0度の位置まで動かす
-          downlink_pwm_1 = 0;
-          downlink_pwm_2 = 0;
-        }
-        break;
     }
   }
   if (nowphase == 0) {
