@@ -120,24 +120,24 @@ void setup() {
 }
 
 void loop() {
-  if (millis() - time_speaker >= 0.8) {
-    if (i == 1) {
-      if (millis() - time_speaker < 3000) {
-        if (time_speaker_interbal == 0) {
-          digitalWrite(pinNo, HIGH);  // ブザーを鳴らす
-          time_speaker_interbal = 1;
-        } else if (time_speaker_interbal == 1) {
-          digitalWrite(pinNo, LOW);  // ブザーを止める
-          time_speaker_interbal = 0;
-        }
-      }
-    }
-  }
+  // if (millis() - time_speaker >= 0.8) {
+  //   if (i == 1) {
+  //     if (millis() - time_speaker < 3000) {
+  //       if (time_speaker_interbal == 0) {
+  //         digitalWrite(pinNo, HIGH);  // ブザーを鳴らす
+  //         time_speaker_interbal = 1;
+  //       } else if (time_speaker_interbal == 1) {
+  //         digitalWrite(pinNo, LOW);  // ブザーを止める
+  //         time_speaker_interbal = 0;
+  //       }
+  //     }
+  //   }
+  // }
   if (millis() - time_100Hz >= 10) {
     //100Hz処理
     time_100Hz += 10;
     count_10Hz++;  //100Hz処理されたときに+1
-    if (count_10Hz > 10) {
+    if (count_10Hz >= 10) {
       //10Hz
       //テレメトリ送信
       // Serial.print("downlink: ");
@@ -161,7 +161,7 @@ void loop() {
       digitalWrite(PWM_LED_RED, LOW);  //赤LED消灯
       count_10Hz = 0;
       count++;
-      if (count > 10) {
+      if (count >= 10) {
         //1Hz
         // CCP.uint32_to_device(CCP_downlink, downlink);
         count = 0;
@@ -199,6 +199,8 @@ void loop() {
           goREADY();
           Serial.println("GO READY");
         }
+        break;
+      case CCP_parachute_control:
         if (CCP.str_match(const_cast<char*>("OPEN"), 4)) {
           downlink_pwm_1 = 1;
           downlink_pwm_2 = 1;
@@ -206,10 +208,10 @@ void loop() {
           myservo2.write(90);  // サーボモーター2を90度の位置まで動かす
         }
         if (CCP.str_match(const_cast<char*>("CLOSE"), 5)) {
-          myservo1.write(180);  // サーボモーター1を180度の位置まで動かす
-          myservo2.write(0);    // サーボモーター2を0度の位置まで動かす
           downlink_pwm_1 = 0;
           downlink_pwm_2 = 0;
+          myservo1.write(180);  // サーボモーター1を180度の位置まで動かす
+          myservo2.write(0);    // サーボモーター2を0度の位置まで動かす
         }
         break;
       case CCP_A_accel_mss:
@@ -220,7 +222,7 @@ void loop() {
         altitude_tmp_m = altitudedata_m;
         altitudedata_m = CCP.data_float();  //高度の値を代入
         altitude_difference = (altitudedata_m - altitude_tmp_m);
-        // Serial.print("高度差");  //debag
+        // Serial.print("高度差");  //debug
         // Serial.println(altitude_difference);
         break;
       case CCP_parachute_fuse:
@@ -271,7 +273,7 @@ void loop() {
   if ((acceldata_mss > Accel_out_threshold) && (!acceljudge_ground) && (nowphase >= 1)) {  //加速度による判定なし，READY以降が最低条件
     accel_ground_count++;
     // Serial.println(accel_ground_count);
-    if (accel_ground_count >= 4) {  //5回以上
+    if (accel_ground_count >= 5) {  //5回以上
       // Serial.println("加速度検知");
       acceljudge_ground = true;
     }
@@ -283,7 +285,7 @@ void loop() {
   if ((altitude_difference > Altitude_out_threshold) && (!altitudejudge_ground) && (nowphase >= 1)) {  //高度による判定なし，READY以降が最低条件
     altitude_ground_count++;
     // Serial.println(altitude_ground_count);
-    if (altitude_ground_count >= 4) {  //5回以上
+    if (altitude_ground_count >= 5) {  //5回以上
       altitudejudge_ground = true;
       altitude_ground_count = 0;
       // Serial.println("----高度上昇--------------------------");
