@@ -4,9 +4,9 @@
 // bool is1hz = false;
 // bool comand = false;
 
-// String downlink = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+String downlink = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 // String downlink = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
-String downlink = "B";
+// String downlink = "B";
 
 
 
