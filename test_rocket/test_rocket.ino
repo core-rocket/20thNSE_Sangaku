@@ -4,7 +4,11 @@
 // bool is1hz = false;
 // bool comand = false;
 
-String downlink = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+// String downlink = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+// String downlink = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+String downlink = "B";
+
+
 
 void setup() {
   Serial.begin(115200);
@@ -28,7 +32,7 @@ void loop() {
 
   Serial1.println(downlink);
   Serial.println(downlink);
-  delay(1000);
+  delay(3000);
   // if (is1hz) {
   //   is1hz = false;
   //   Serial1.println(downlink);
