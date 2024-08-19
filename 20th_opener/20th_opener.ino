@@ -1,9 +1,9 @@
 //// loop()と，ここから呼び出される関数ではdelay()使用禁止
 // 閾値設定
-float Accel_out_threshold = 11.0;      //離床判定に用いるm/ss
-float Altitude_out_threshold = 0.6;    //離床判定に用いるm/s (誤差を|1.0|m/sで考慮)
-float accel_open_threshold = -11.0;    //開放判定に用いるm/ss
-float altitude_open_threshold = -0.6;  //開放判定に用いるm/s (誤差を|1.0|m/sで考慮)
+float Accel_out_threshold = 8.0;      //離床判定に用いるm/ss
+float Altitude_out_threshold = 0.3;    //離床判定に用いるm/s (誤差を|1.0|m/sで考慮)
+float accel_open_threshold = -8.0;    //開放判定に用いるm/ss
+float altitude_open_threshold = -0.3;  //開放判定に用いるm/s (誤差を|1.0|m/sで考慮)
 unsigned long maxaltime = 24000;       //頂点到達時間: 22.651s
 unsigned long mecotime = 10000;        //燃焼時間：6.41s
 
@@ -255,6 +255,18 @@ void loop() {
     }
   }
   //常に実行する処理
+  //サーボ
+  if (nowphase == 3) {
+    myservo1.write(90);  // サーボモーター1を90度の位置まで動かす
+    myservo2.write(90);  // サーボモーター2を90度の位置まで動かす
+    downlink_pwm_1 = 1;
+    downlink_pwm_2 = 1;
+  } else {
+    myservo1.write(0);    // サーボモーター1を180度の位置まで動かす
+    myservo2.write(180);  // サーボモーター2を0度の位置まで動かす
+    downlink_pwm_1 = 0;
+    downlink_pwm_2 = 0;
+  }
   //(R-F)加速度による離床判定altitude
   if ((acceldata_mss > Accel_out_threshold) && (!acceljudge_ground) && (nowphase >= 1)) {  //加速度による判定なし，READY以降が最低条件
     accel_ground_count++;
@@ -331,10 +343,10 @@ void loop() {
       if ((open_altitude_time) && (open_accel_time) && (emst)) {
         // Serial.println("--------servo_power_ON,OPENED--------------------");
         nowphase = 3;
-        myservo1.write(90);  // サーボモーター1を90度の位置まで動かす
-        myservo2.write(90);  // サーボモーター2を90度の位置まで動かす
-        downlink_pwm_1 = 1;
-        downlink_pwm_2 = 1;
+        // myservo1.write(90);  // サーボモーター1を90度の位置まで動かす
+        // myservo2.write(90);  // サーボモーター2を90度の位置まで動かす
+        // downlink_pwm_1 = 1;
+        // downlink_pwm_2 = 1;
         CCP.string_to_device(CCP_opener_state, (char*)"OPENED");
       }
       break;
