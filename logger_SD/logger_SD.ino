@@ -1,6 +1,6 @@
 const int _MISO = D9;
 const int _MOSI = D10;
-const int _CS = D2;
+const int _CS = D4;
 const int _SCK = D8;
 
 #include <SPI.h>
@@ -18,12 +18,16 @@ CCP_MCP2515 CCP(CAN0_CS, CAN0_INT);
 char msgString[128];
 char str_buf[7];  // 6+\0
 
+//timer
+unsigned long previousMillis = 0;  // 最後に処理が行われた時刻
+const long interval = 100;         // 10Hzの間隔（100ms）
+
 void setup() {
   // Open serial communications and wait for port to open:
   Serial.begin(115200);
 
 
-  delay(10000);
+  delay(5000);
   Serial.print("Initializing SD card...");
 
   // Ensure the SPI pinout the SD card is connected to is configured properly
@@ -41,6 +45,8 @@ void setup() {
 }
 
 void loop() {
+  unsigned long currentMillis = millis();
+
   // open the file. note that only one file can be open at a time,
   // so you have to close this one before opening another.
   if (!digitalRead(CAN0_INT))  // データ受信確認
@@ -56,18 +62,23 @@ void loop() {
     } else {
       sprintf(msgString, "%d,ID,%03x,time,%d000,fp16_0,%8.2f,fp16_1,%8.2f,fp16_2,%8.2f", millis(), CCP.id, CCP.time16(), CCP.data_fp16_0(), CCP.data_fp16_1(), CCP.data_fp16_2());
     }
-  }
-  File dataFile = SD.open("data.txt", FILE_WRITE);
-
-  // if the file is available, write to it:
-  if (dataFile) {
-    dataFile.println(msgString);
-    dataFile.close();
-    // print to the serial port too:
     Serial.println(msgString);
   }
-  // if the file isn't open, pop up an error:
-  else {
-    Serial.println("error opening datalog.txt");
+
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    File dataFile = SD.open("data.txt", FILE_WRITE);
+
+    // if the file is available, write to it:
+    if (dataFile) {
+      dataFile.println(msgString);
+      dataFile.close();
+      // print to the serial port too:
+      // Serial.println(msgString);
+    }
+    // if the file isn't open, pop up an error:
+    else {
+      Serial.println("error opening datalog.txt");
+    }
   }
 }
