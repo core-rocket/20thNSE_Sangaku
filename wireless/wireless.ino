@@ -59,15 +59,16 @@ void loop() {
       // Serial1.println("return READY");
     } else if (inputString == "OK") {
     } else if (inputString == "OPEN") {
-      byte sndStat = CCP.string_to_device(CCP_parachute_control, const_cast<char*>("OPEN"));
-      if (sndStat == CAN_OK) {
-        Serial.println("Message Sent Successfully!");
-      } else {
-        Serial.println("Error Sending Message...");
-      }
+      CCP.string_to_device(CCP_parachute_control, const_cast<char*>("OPEN"));
       Serial.println("OPEN");
     } else if (inputString == "CLOSE") {
       CCP.string_to_device(CCP_parachute_control, const_cast<char*>("CLOSE"));
+      Serial.println("CLOSE");
+    } else if (inputString.indexOf("TIME") != -1) {
+      CCP.float_to_device(CCP_parachute_control, inputString.subtring(4).toFloat());
+      Serial.println(inputString.subtring(4).toFloat());
+    } else if (inputString == "S") {
+      CCP.string_to_device(CCP_opener_control, const_cast<char*>("S"));
       Serial.println("CLOSE");
     } else {
       Serial.println("NG");
