@@ -10,12 +10,12 @@
 #define PWM_LED_BLUE 0   //値取得・送信確認用&エラー確認用
 #define PWM_LED_WHITE 1  //エラー確認用
 
-#define bme_I2Cadr 0x77
+#define bme_I2Cadr 0x76
 
 //CAN
 #include <CCP_MCP2515.h>
-#define CAN0_INT D1
-#define CAN0_CS D0
+#define CAN0_INT D6
+#define CAN0_CS D7
 CCP_MCP2515 CCP(CAN0_CS, CAN0_INT);
 
 //デバッグ
