@@ -10,12 +10,12 @@
 #define PWM_LED_BLUE 0   //値取得・送信確認用&エラー確認用
 #define PWM_LED_WHITE 1  //エラー確認用
 
-#define bme_I2Cadr 0x76
+#define bme_I2Cadr 0x77
 
 //CAN
 #include <CCP_MCP2515.h>
-#define CAN0_INT D6
-#define CAN0_CS D7
+#define CAN0_INT D0
+#define CAN0_CS D1
 CCP_MCP2515 CCP(CAN0_CS, CAN0_INT);
 
 //デバッグ
@@ -72,22 +72,22 @@ void setup(void) {
   pinMode(PWM_LED_BLUE, OUTPUT);
   pinMode(PWM_LED_WHITE, OUTPUT);
 
-  unsigned status;
-  // default settings
-  status = bme.begin();
-  // You can also pass in a Wire library object like &Wire2
-  // status = bme.begin(0x76, &Wire2)
-  if (!status) {
-    digitalWrite(PWM_LED_BLUE, HIGH);  //BMEI2C_error
-    Serial.println("Could not find a valid BME280 sensor, check wiring, address, sensor ID!");
-    Serial.print("SensorID was: 0x");
-    Serial.println(bme.sensorID(), 16);
-    Serial.print("        ID of 0xFF probably means a bad address, a BMP 180 or BMP 085\n");
-    Serial.print("   ID of 0x56-0x58 represents a BMP 280,\n");
-    Serial.print("        ID of 0x60 represents a BME 280.\n");
-    Serial.print("        ID of 0x61 represents a BME 680.\n");
-    while (1) delay(10);
-  }
+  // unsigned status;
+  // // default settings
+  // status = bme.begin();
+  // // You can also pass in a Wire library object like &Wire2
+  // // status = bme.begin(0x76, &Wire2)
+  // if (status) {
+  //   digitalWrite(PWM_LED_BLUE, HIGH);  //BMEI2C_error
+  //   Serial.println("Could not find a valid BME280 sensor, check wiring, address, sensor ID!");
+  //   Serial.print("SensorID was: 0x");
+  //   Serial.println(bme.sensorID(), 16);
+  //   Serial.print("        ID of 0xFF probably means a bad address, a BMP 180 or BMP 085\n");
+  //   Serial.print("   ID of 0x56-0x58 represents a BMP 280,\n");
+  //   Serial.print("        ID of 0x60 represents a BME 280.\n");
+  //   Serial.print("        ID of 0x61 represents a BME 680.\n");
+  //   while (1) delay(10);
+  // }
   Serial.println("-- Default Test --");
   // BME280の初期化
   Serial.println(F("BME280 Sensor event test"));
