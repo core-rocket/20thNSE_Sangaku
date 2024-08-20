@@ -12,12 +12,11 @@ CCP_MCP2515 CCP(CAN0_CS, CAN0_INT);
 // #define debug
 
 //テレメトリー
-int downlink = 0;
-
+uint32_t downlink = 0;
 uint32_t data_A_GNSS_latitude_udeg = 0;
 uint32_t data_A_GNSS_longitude_udeg = 0;
 
-const unsigned long interval = 1000;  // 処理の間隔を10ミリ秒（100Hz）に設定
+const unsigned long interval = 3000;  // 処理の間隔を10ミリ秒（100Hz）に設定
 unsigned long previousMillis = 0;     // 前回の処理時間を保存する変数
 
 void setup() {
@@ -40,7 +39,7 @@ void loop() {
   if (Serial1.available() > 0) {
     String inputString = Serial1.readStringUntil('\n');  // 受信した文字列を読み取る
     inputString.trim();
-    Serial.print("uplink==");     //前後の空白文字を削除する
+    // Serial.println("uplink==");     //前後の空白文字を削除する
     Serial.println(inputString);  // Serial1.println(inputString);
     if (inputString == "N") {
       CCP.string_to_device(CCP_parachute_fuse, const_cast<char*>("EMST"));
@@ -60,7 +59,12 @@ void loop() {
       // Serial1.println("return READY");
     } else if (inputString == "OK") {
     } else if (inputString == "OPEN") {
-      CCP.string_to_device(CCP_parachute_control, const_cast<char*>("OPEN"));
+      byte sndStat = CCP.string_to_device(CCP_parachute_control, const_cast<char*>("OPEN"));
+      if (sndStat == CAN_OK) {
+        Serial.println("Message Sent Successfully!");
+      } else {
+        Serial.println("Error Sending Message...");
+      }
       Serial.println("OPEN");
     } else if (inputString == "CLOSE") {
       CCP.string_to_device(CCP_parachute_control, const_cast<char*>("CLOSE"));
@@ -141,5 +145,11 @@ void loop() {
     Serial1.print(data_A_GNSS_latitude_udeg);
     Serial1.print(",");
     Serial1.println(data_A_GNSS_longitude_udeg);
+
+    Serial.print(downlink, BIN);
+    Serial.print(",");
+    Serial.print(data_A_GNSS_latitude_udeg);
+    Serial.print(",");
+    Serial.println(data_A_GNSS_longitude_udeg);
   }
 }
