@@ -65,7 +65,7 @@ void loop() {
       CCP.string_to_device(CCP_parachute_control, const_cast<char*>("CLOSE"));
       Serial.println("CLOSE");
     } else if (inputString.indexOf("TIME") != -1) {
-      CCP.float_to_device(CCP_parachute_control, inputString.subtring(4).toFloat());
+      CCP.float_to_device(CCP_toptime_s, inputString.subtring(4).toFloat());
       Serial.println(inputString.subtring(4).toFloat());
     } else if (inputString == "S") {
       CCP.string_to_device(CCP_opener_control, const_cast<char*>("S"));
