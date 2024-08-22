@@ -25,12 +25,8 @@ void setup() {
   Serial.println("SparkFun u-blox Example");
 
   Wire.begin();
-
-  if (myGNSS.begin() == false) {
-    Serial.println(F("u-blox GNSS not detected at default I2C address. Please check wiring. Freezing."));
-    while (1)
-      ;
-  }
+  myGNSS.begin();
+  
 
   myGNSS.setI2COutput(COM_TYPE_UBX | COM_TYPE_NMEA);  //Set the I2C port to output both NMEA and UBX messages
   myGNSS.saveConfigSelective(VAL_CFG_SUBSEC_IOPORT);  //Save (only) the communications port settings to flash and BBR
@@ -49,7 +45,7 @@ void setup() {
 void loop() {
   myGNSS.checkUblox();  //See if new data is available. Process bytes as they come in.
 
-  // if (nmea.isValid() == true) {
+  if (nmea.isValid() == true) {
     long latitude_mdeg = nmea.getLatitude();
     long longitude_mdeg = nmea.getLongitude();
 
@@ -72,8 +68,9 @@ void loop() {
       Serial.println("Error Sending Message...");
     }
     nmea.clear();  // Clear the MicroNMEA storage to make sure we are getting fresh data
-  // } else {
-    Serial.println("Waiting for fresh data");
+  }
+  // //  else {
+  //   Serial.println("Waiting for fresh data");
   // }
 
   if (!digitalRead(CAN0_INT))  // データ受信確認
@@ -95,7 +92,7 @@ void loop() {
   // Serial.print(",");
   // Serial.println(CCP_longitude);
 
-  delay(100);  //Don't pound too hard on the I2C bus
+  // delay(100);  //Don't pound too hard on the I2C bus
 }
 
 //This function gets called from the SparkFun u-blox Arduino Library
