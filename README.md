@@ -1,1 +1,1 @@
-# 20thNSE
+# 20thNSE_Sangaku
